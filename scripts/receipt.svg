@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+  <rect width="100%" height="100%" fill="white"/>
+  <text x="30" y="50" font-family="monospace" font-size="24" font-weight="bold" fill="black">WHOLE FOODS MARKET</text>
+  <text x="30" y="90" font-family="monospace" font-size="16" fill="black">123 MAIN STREET, SAN FRANCISCO CA</text>
+  <text x="30" y="130" font-family="monospace" font-size="16" fill="black">DATE: 08/24/2026</text>
+  <text x="30" y="190" font-family="monospace" font-size="16" fill="black">ORGANIC MILK       $4.50</text>
+  <text x="30" y="230" font-family="monospace" font-size="16" fill="black">WHOLE WHEAT BREAD  $3.20</text>
+  <text x="30" y="270" font-family="monospace" font-size="16" fill="black">FRESH STRAWBERRIES $5.99</text>
+  <text x="30" y="340" font-family="monospace" font-size="22" font-weight="bold" fill="black">TOTAL AMOUNT: $13.69</text>
+</svg>

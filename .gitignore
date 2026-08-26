@@ -1,0 +1,66 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Production build
+dist/
+build/
+.vite/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+server/.env
+server/.env.local
+
+# Database & SQLite files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+server/prisma/dev.db
+server/prisma/dev.db-journal
+server/prisma/*.db
+server/prisma/*.db-journal
+prisma/migrations/*.db
+
+# Secrets & certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Temporary / Test tokens
+.test_token
+server/.test_token
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Misc
+*.zip
+*.tar.gz

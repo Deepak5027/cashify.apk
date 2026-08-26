@@ -1,0 +1,9 @@
+{
+  "appId": "com.financeai.app",
+  "appName": "FinancerperfectAi",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}
