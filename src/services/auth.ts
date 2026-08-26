@@ -1,4 +1,5 @@
-import apiClient, { getApiBaseUrl } from '../utils/apiClient';
+import apiClient from '../utils/apiClient';
+import { supabase } from '../utils/supabase/client';
 
 export interface User {
   id: string;
@@ -38,6 +39,19 @@ class AuthService {
 
   async refreshUser(): Promise<User | null> {
     try {
+      // Check Supabase session first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.access_token) {
+        localStorage.setItem('token', session.access_token);
+        const res = await apiClient.get('/auth/me');
+        if (res && res.user) {
+          this.state = { user: res.user, accessToken: session.access_token, isAuthenticated: true };
+          this.notifyListeners();
+          return res.user;
+        }
+      }
+
+      // Fallback to local token
       const token = localStorage.getItem('token');
       if (token) {
         const res = await apiClient.get('/auth/me');
@@ -55,28 +69,48 @@ class AuthService {
 
   private async init() {
     await this.refreshUser();
+
+    // Listen to Supabase auth state changes
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.access_token) {
+        localStorage.setItem('token', session.access_token);
+        await this.refreshUser();
+      } else if (event === 'SIGNED_OUT') {
+        localStorage.removeItem('token');
+        this.state = { user: null, accessToken: null, isAuthenticated: false };
+        this.notifyListeners();
+      }
+    });
   }
 
   async signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
     try {
-      const base = getApiBaseUrl();
-      const origin = window.location.origin;
-      const currentRedirect = encodeURIComponent(origin);
-      const targetUrl = `${base}/auth/google?redirect=${currentRedirect}`;
-      window.location.href = targetUrl;
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+        },
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Google sign-in failed' };
     }
   }
 
-  async handleOAuthCallback(token: string) {
-    localStorage.setItem('token', token);
-    const res = await apiClient.get('/auth/me');
-    if (res && res.user) {
-      this.state = { user: res.user, accessToken: token, isAuthenticated: true };
-      this.notifyListeners();
+  async handleOAuthCallback(token?: string) {
+    if (token) {
+      localStorage.setItem('token', token);
     }
+    const { data: { session } } = await supabase.auth.getSession();
+    const activeToken = session?.access_token || token || localStorage.getItem('token');
+    if (activeToken) {
+      localStorage.setItem('token', activeToken);
+    }
+    await this.refreshUser();
   }
 
   async signup(email: string, password: string, name: string) {
@@ -100,6 +134,7 @@ class AuthService {
   }
 
   async logout() {
+    await supabase.auth.signOut();
     localStorage.removeItem('token');
     this.state = { user: null, accessToken: null, isAuthenticated: false };
     this.notifyListeners();
@@ -112,7 +147,6 @@ class AuthService {
   }
 
   async verifySignupOTP(email: string, code: string) {
-    // In local demo environment, any valid 6-digit code or demo validation succeeds
     if (code && code.length === 6) {
       return { success: true };
     }

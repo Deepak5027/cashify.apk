@@ -1,5 +1,5 @@
 export function getApiBaseUrl(): string {
-  if (typeof window === 'undefined') return 'http://localhost:4000';
+  if (typeof window === 'undefined') return 'https://financeai-api-ba5p.onrender.com';
   const customUrl = localStorage.getItem('custom_api_url');
   if (customUrl) return customUrl.replace(/\/$/, '');
 
@@ -12,10 +12,10 @@ export function getApiBaseUrl(): string {
     (window.location.hostname === 'localhost' && window.location.port === '');
 
   if (isNativeApp) {
-    return 'http://192.168.1.4:4000';
+    return 'https://financeai-api-ba5p.onrender.com';
   }
 
-  return 'http://localhost:4000';
+  return 'https://financeai-api-ba5p.onrender.com';
 }
 
 function getToken() {

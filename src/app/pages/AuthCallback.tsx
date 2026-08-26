@@ -2,13 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { authService } from '../../services/auth';
+import { supabase } from '../../utils/supabase/client';
 
-/**
- * Handles the OAuth redirect from Google (and any other provider).
- * Supabase appends a code + state to the URL. Calling getSession()
- * here triggers the PKCE exchange and establishes a full session.
- * onAuthStateChange in AuthService fires automatically, updating global auth state.
- */
 export default function AuthCallback() {
   const navigate = useNavigate();
   const handled = useRef(false);
@@ -21,16 +16,20 @@ export default function AuthCallback() {
       try {
         const params = new URLSearchParams(window.location.search);
         const token = params.get('token');
-        if (!token) {
-          toast.error('Authentication failed. No token received.');
-          navigate('/login', { replace: true });
+
+        // Check if Supabase handled OAuth session automatically
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session || token) {
+          await authService.handleOAuthCallback(token || session?.access_token);
+          const state = authService.getState();
+          toast.success(`Welcome, ${state.user?.name || state.user?.email || 'user'}!`);
+          navigate('/app', { replace: true });
           return;
         }
 
-        await authService.handleOAuthCallback(token);
-        const state = authService.getState();
-        toast.success(`Welcome, ${state.user?.name || state.user?.email || 'user'}!`);
-        navigate('/app', { replace: true });
+        toast.error('Authentication failed. No session active.');
+        navigate('/login', { replace: true });
       } catch (err: any) {
         console.error('Unexpected callback error:', err);
         toast.error('Something went wrong. Please try again.');
