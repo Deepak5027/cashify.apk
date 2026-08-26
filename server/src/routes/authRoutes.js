@@ -3,6 +3,7 @@ import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import prisma from '../prismaClient.js';
+import { verifyJWT } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
@@ -25,12 +26,12 @@ async function getPasswordHash(email) {
   return entry?.value || null;
 }
 
-async function setPasswordHash(email, password) {
-  const hashed = await bcrypt.hash(password, 10);
+async function setPasswordHash(email, hash) {
+  const hashed = await bcrypt.hash(hash, 10);
   await prisma.kvStore.upsert({
     where: { key: `auth_pass_${email}` },
-    update: { value: hashed },
     create: { key: `auth_pass_${email}`, value: hashed },
+    update: { key: `auth_pass_${email}`, value: hashed },
   });
 }
 
@@ -104,7 +105,6 @@ router.get('/google', async (req, res) => {
   const redirectParam = req.query.redirect;
   const redirectBase = redirectParam || FRONTEND_URL;
 
-  // Instant seamless Google login for Native APK / local development
   try {
     let user = await prisma.user.findFirst({ where: { email: 'google.user@financerperfect.ai' } });
     if (!user) {
@@ -149,28 +149,9 @@ router.get('/google/callback', passport.authenticate('google', { failureRedirect
 
 router.get('/failure', (req, res) => res.status(401).json({ error: 'oauth_failure' }));
 
-// Return current user from JWT in Authorization header
-router.get('/me', async (req, res) => {
-  const auth = req.headers.authorization || '';
-  const match = auth.match(/^Bearer (.+)$/);
-  if (!match) return res.status(401).json({ error: 'no_token' });
-  const token = match[1];
-  try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    // payload has id and email
-    const user = await prisma.user.findUnique({ where: { id: payload.id } });
-    if (!user) return res.status(404).json({ error: 'user_not_found' });
-    
-    // Normalize picture property from image
-    const userWithMeta = {
-      ...user,
-      picture: user.image || payload.picture || null,
-    };
-    res.json({ user: userWithMeta });
-  } catch (err) {
-    res.status(401).json({ error: 'invalid_token' });
-  }
+// Return current user from JWT token (supports both custom & Supabase JWTs)
+router.get('/me', verifyJWT, (req, res) => {
+  res.json({ user: formatUser(req.user) });
 });
 
 export default router;
-
