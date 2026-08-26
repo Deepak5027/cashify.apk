@@ -12,32 +12,69 @@ export default function AuthCallback() {
     if (handled.current) return;
     handled.current = true;
 
-    async function exchangeCode() {
+    async function handleCallback() {
       try {
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
+        console.log('[AuthCallback] Processing OAuth callback...');
+        console.log('[AuthCallback] Hash:', window.location.hash);
+        console.log('[AuthCallback] Search:', window.location.search);
 
-        // Check if Supabase handled OAuth session automatically
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session || token) {
-          await authService.handleOAuthCallback(token || session?.access_token);
+        // 1. Direct extract from Hash (#access_token=...)
+        let accessToken: string | null = null;
+        if (window.location.hash) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          accessToken = hashParams.get('access_token');
+        }
+
+        // 2. Direct extract from Search (?token=... or ?code=...)
+        if (!accessToken && window.location.search) {
+          const searchParams = new URLSearchParams(window.location.search);
+          accessToken = searchParams.get('token') || searchParams.get('access_token');
+        }
+
+        // 3. Fallback: Check Supabase session
+        if (!accessToken) {
+          const { data: { session } } = await supabase.auth.getSession();
+          accessToken = session?.access_token || null;
+        }
+
+        // 4. Wait up to 3 seconds for Supabase onAuthStateChange if token is still loading
+        if (!accessToken) {
+          console.log('[AuthCallback] Waiting for Supabase async session detection...');
+          await new Promise<void>((resolve) => {
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+              if (session?.access_token) {
+                accessToken = session.access_token;
+                subscription.unsubscribe();
+                resolve();
+              }
+            });
+            setTimeout(() => {
+              subscription.unsubscribe();
+              resolve();
+            }, 3000);
+          });
+        }
+
+        if (accessToken) {
+          console.log('[AuthCallback] Session established, syncing user...');
+          await authService.handleOAuthCallback(accessToken);
           const state = authService.getState();
-          toast.success(`Welcome, ${state.user?.name || state.user?.email || 'user'}!`);
+          toast.success(`Welcome, ${state.user?.name || state.user?.email || 'User'}!`);
           navigate('/app', { replace: true });
           return;
         }
 
-        toast.error('Authentication failed. No session active.');
+        console.warn('[AuthCallback] No session established. Redirecting to login.');
+        toast.error('Authentication failed. Please try signing in again.');
         navigate('/login', { replace: true });
       } catch (err: any) {
-        console.error('Unexpected callback error:', err);
-        toast.error('Something went wrong. Please try again.');
+        console.error('[AuthCallback] Error:', err);
+        toast.error('Sign-in failed. Please try again.');
         navigate('/login', { replace: true });
       }
     }
 
-    exchangeCode();
+    handleCallback();
   }, [navigate]);
 
   return (
