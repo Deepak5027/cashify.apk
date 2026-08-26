@@ -106,7 +106,7 @@ router.get('/google', async (req, res) => {
 
   // Instant seamless Google login for Native APK / local development
   try {
-    let user = await prisma.user.findUnique({ where: { email: 'google.user@financerperfect.ai' } });
+    let user = await prisma.user.findFirst({ where: { email: 'google.user@financerperfect.ai' } });
     if (!user) {
       user = await prisma.user.create({
         data: {
@@ -127,7 +127,7 @@ router.get('/google', async (req, res) => {
     return res.redirect(`${redirectBase}/auth/callback?token=${encodeURIComponent(token)}`);
   } catch (err) {
     console.error('Google mobile login error:', err);
-    return res.redirect(`${redirectBase}/login?error=auth_failed`);
+    return res.status(500).json({ error: 'auth_failed', details: err?.message || String(err) });
   }
 });
 
