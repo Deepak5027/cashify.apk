@@ -27,13 +27,13 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.x'
           channel: 'stable'
           cache: true
 
       - name: Build Android Debug APK
         working-directory: ./aifinancify_flutter
         run: |
+          chmod +x android/gradlew || true
           flutter pub get
           flutter build apk --debug || (cd android && ./gradlew assembleDebug --no-daemon)
 
