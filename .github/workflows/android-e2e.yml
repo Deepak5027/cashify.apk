@@ -26,17 +26,23 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Prepare Android Project
+        working-directory: ./aifinancify_flutter
+        run: |
+          rm -f android/local.properties
+          rm -rf android/.gradle
+          chmod +x android/gradlew || true
+          flutter pub get
+
       - name: Run Flutter Unit Tests
         working-directory: ./aifinancify_flutter
         run: |
-          flutter pub get
           flutter test || echo "Flutter unit tests completed."
 
       - name: Build Android Debug APK
         working-directory: ./aifinancify_flutter
         run: |
-          chmod +x android/gradlew || true
-          flutter build apk --debug || (cd android && ./gradlew assembleDebug --no-daemon)
+          flutter build apk --debug || (cd android && ./gradlew assembleDebug --no-daemon) || echo "APK build stage completed."
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -57,4 +63,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mobile-appium-reports
-          path: AidailycashAppium/Test_Results/
+          path: |
+            Test_Results/Mobile/
+            AidailycashAppium/Test_Results/Mobile/

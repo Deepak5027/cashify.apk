@@ -9,8 +9,14 @@ build/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
-aifinancify_flutter/build/
-aifinancify_flutter/.dart_tool/
+# Android & Gradle
+.gradle/
+*.gradle/
+local.properties
+**/android/local.properties
+**/android/.gradle/
+aifinancify_flutter/android/local.properties
+aifinancify_flutter/android/.gradle/
 
 # Environment files
 .env
