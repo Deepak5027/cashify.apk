@@ -159,3 +159,69 @@ model KvStore {
   createdAt DateTime @default(now())
 }
 
+model VirtualCard {
+  id              Int      @id @default(autoincrement())
+  userId          String
+  cardName        String   @default("AiFinancify Virtual Card")
+  cardType        String   @default("Virtual Debit")
+  cardNetwork     String   @default("VISA")
+  bankName        String   @default("AiFinancify Bank")
+  cardNumber      String   @default("•••• •••• •••• 8821")
+  cardHolder      String   @default("AIFINANCIFY MEMBER")
+  expiryDate      String   @default("08/29")
+  cvv             String   @default("842")
+  spendingLimit   Float    @default(50000)
+  currentSpend    Float    @default(0)
+  isFrozen        Boolean  @default(false)
+  tapToPayEnabled Boolean  @default(true)
+  internationalTx Boolean  @default(false)
+  cardColor       String   @default("indigo")
+  isPrimary       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Subscription {
+  id               Int       @id @default(autoincrement())
+  userId           String
+  name             String
+  amount           Float
+  billingCycle     String    @default("monthly")
+  category         String    @default("Entertainment")
+  nextBillingDate  DateTime
+  reminderDays     Int       @default(3)
+  isActive         Boolean   @default(true)
+  color            String?   @default("#6366F1")
+  iconName         String?   @default("subscriptions")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model Invoice {
+  id          Int           @id @default(autoincrement())
+  userId      String
+  invoiceNo   String
+  clientName  String
+  clientEmail String?
+  clientPhone String?
+  upiId       String?       @default("deepak@okaxis")
+  issueDate   DateTime      @default(now())
+  dueDate     DateTime?
+  status      String        @default("unpaid")
+  taxRate     Float         @default(18.0)
+  notes       String?
+  items       InvoiceItem[]
+  totalAmount Float         @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model InvoiceItem {
+  id          Int     @id @default(autoincrement())
+  invoiceId   Int
+  description String
+  quantity    Float   @default(1)
+  unitPrice   Float
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+

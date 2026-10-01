@@ -1414,6 +1414,57 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* 3 New Professional Features Quick Hub */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Link
+          to="/app/virtual-card"
+          className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-indigo-500/50 transition-all flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 group-hover:scale-110 transition-transform">
+              <CreditCard className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-white">Virtual Debit Card</div>
+              <div className="text-[11px] text-slate-400">3D Card & Budget Caps</div>
+            </div>
+          </div>
+          <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors" />
+        </Link>
+
+        <Link
+          to="/app/subscriptions"
+          className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-pink-500/50 transition-all flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-pink-500/10 text-pink-400 group-hover:scale-110 transition-transform">
+              <RefreshCw className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-white">Subscription Radar</div>
+              <div className="text-[11px] text-slate-400">Vampire Drain & Bills</div>
+            </div>
+          </div>
+          <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-pink-400 transition-colors" />
+        </Link>
+
+        <Link
+          to="/app/statements"
+          className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 transition-all flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 group-hover:scale-110 transition-transform">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-white">Statements & Invoicing</div>
+              <div className="text-[11px] text-slate-400">PDFs, Claims & UPI QR</div>
+            </div>
+          </div>
+          <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors" />
+        </Link>
+      </div>
+
       {(() => {
         switch (role) {
           case "business":   return <BusinessDashboard {...props} />;

@@ -24,6 +24,8 @@ import AIPredictions from "./pages/AIPredictions";
 import Settings from "./pages/Settings";
 import HowItWorks from "./pages/HowItWorks";
 import AdminAnalytics from "./pages/AdminAnalytics";
+import VirtualCard from "./pages/VirtualCard";
+import StatementsInvoicing from "./pages/StatementsInvoicing";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -99,6 +101,8 @@ export const router = createBrowserRouter([
       { path: "predictions", element: <AIPredictions /> },
       { path: "how-it-works", element: <HowItWorks /> },
       { path: "admin", element: <AdminAnalytics /> },
+      { path: "virtual-card", element: <VirtualCard /> },
+      { path: "statements", element: <StatementsInvoicing /> },
       { path: "profile", element: <Profile /> },
       { path: "settings", element: <Settings /> },
     ],

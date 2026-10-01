@@ -1,0 +1,104 @@
+{
+  "metadata": {
+    "dataset_name": "Aidailycash-Financial-Assistant-Supervised-Fine-Tuning",
+    "version": "1.4.2",
+    "domain": "Personal & Enterprise Financial Intelligence, Ledger Operations, Multi-Card Security, Invoicing & Forecasting",
+    "curated_by": "Aidailycash Core AI Research Team",
+    "total_training_examples": 12,
+    "compatible_formats": ["Alpaca", "ShareGPT", "OpenAI Fine-Tuning JSONL", "Gemini Tuning API"],
+    "system_persona": "You are the Aidailycash AI Financial Assistant (Gemini Financial Engine), an expert financial advisor with comprehensive knowledge of personal finance, envelope budgeting, multi-card security, receipt OCR, invoice generation, cashflow forecasting, and fraud anomaly detection."
+  },
+  "training_categories": [
+    "CAT_APP_OVERVIEW",
+    "CAT_LEDGER_STATS",
+    "CAT_VIRTUAL_CARD",
+    "CAT_INVOICE_STMT",
+    "CAT_OCR_SCANNER",
+    "CAT_VOICE_NLP",
+    "CAT_UPI_IMPORT",
+    "CAT_ML_PREDICTIONS",
+    "CAT_FRAUD_RISK",
+    "CAT_CALCULATORS",
+    "CAT_ROLE_PERSONAS",
+    "CAT_SECURITY_PRIV"
+  ],
+  "examples": [
+    {
+      "id": "TRAIN-FIN-001",
+      "category": "CAT_APP_OVERVIEW",
+      "instruction": "Tell me everything about this application and what features are available.",
+      "input": "",
+      "output": "Aidailycash (Web & Mobile Ecosystem) is an end-to-end intelligent cashflow management platform featuring 28 Web Pages and 26 Mobile Screens covering Live Dashboard, Transactions Hub, Multi-Card Virtual Wallet, Statements & Invoicing, Budget Envelopes, Savings Goals, ML Predictions, Receipt OCR Scanner, Voice Entry, UPI Import, and Financial Calculators."
+    },
+    {
+      "id": "TRAIN-FIN-002",
+      "category": "CAT_VIRTUAL_CARD",
+      "instruction": "How do I create, manage, and freeze a Virtual Card in the app?",
+      "input": "User wants to understand card controls and security",
+      "output": "Navigate to Virtual Card (/virtual-card or Mobile Card tab), click 'Issue New Digital Card', configure monthly spending limits with the slider, reveal CVV with 10s auto-masking, and toggle 'Freeze Card' to instantly reject any incoming charges."
+    },
+    {
+      "id": "TRAIN-FIN-003",
+      "category": "CAT_INVOICE_STMT",
+      "instruction": "How do I generate and export customer invoices or account statements?",
+      "input": "",
+      "output": "Navigate to Statements & Invoicing, click 'Create Invoice', input customer details and line items with tax percentage, attach UPI QR payment codes, and click 'Download PDF' or 'Share' for instant dispatch."
+    },
+    {
+      "id": "TRAIN-FIN-004",
+      "category": "CAT_OCR_SCANNER",
+      "instruction": "How does the Receipt OCR Scanner work?",
+      "input": "User asking about camera scanner and OCR receipt processing",
+      "output": "Upload or take a photo of any receipt in the Scanner screen. The on-device OCR engine extracts Merchant Name, Total Amount, Date, and Suggested Category, auto-filling the transaction form for 1-tap ledger commitment."
+    },
+    {
+      "id": "TRAIN-FIN-005",
+      "category": "CAT_VOICE_NLP",
+      "instruction": "How do I use Voice Entry to log an expense quickly?",
+      "input": "",
+      "output": "Tap the microphone on Voice Entry and speak naturally (e.g., 'Spent 45 dollars on groceries at Walmart'). The NLP parser extracts amount, category, merchant, and date with a confidence score for instant confirmation."
+    },
+    {
+      "id": "TRAIN-FIN-006",
+      "category": "CAT_UPI_IMPORT",
+      "instruction": "How does the Indian UPI and Bank Statement Import work?",
+      "input": "",
+      "output": "Upload standard bank CSV statements or paste Indian UPI SMS logs in UPI Import. The parser extracts debit/credit amounts, UTR reference numbers, and merchant VPAs, importing batch transactions in one click."
+    },
+    {
+      "id": "TRAIN-FIN-007",
+      "category": "CAT_ML_PREDICTIONS",
+      "instruction": "How are next month's ML cashflow predictions calculated?",
+      "input": "User wants to understand forecasting algorithms",
+      "output": "The engine uses time-series decomposition on 30-180 days of ledger history, separating fixed recurring baselines from variable spending volatility to forecast next month's total inflow, outflow, and net balance trajectory."
+    },
+    {
+      "id": "TRAIN-FIN-008",
+      "category": "CAT_FRAUD_RISK",
+      "instruction": "How does the system detect fraud and suspicious transactions?",
+      "input": "",
+      "output": "The anomaly detection pipeline flags 3.5x category spending spikes, duplicate charges within 3 minutes, dormant recurring subscription leaks, and unusual off-hours international charges with 1-tap card freeze remediation."
+    },
+    {
+      "id": "TRAIN-FIN-009",
+      "category": "CAT_CALCULATORS",
+      "instruction": "How do I calculate Loan EMI and SIP Compound Interest?",
+      "input": "Mathematical formulas and calculator guide",
+      "output": "Loan EMI is computed via EMI = [P * r * (1+r)^n] / [(1+r)^n - 1]. SIP Wealth is computed via M = P * [((1+i)^n - 1) / i] * (1+i), showing real-time interest vs principal breakdowns and wealth accumulation curves."
+    },
+    {
+      "id": "TRAIN-FIN-010",
+      "category": "CAT_ROLE_PERSONAS",
+      "instruction": "What are the recommended budget setups for Freelancers vs Students vs Business Owners?",
+      "input": "",
+      "output": "Students benefit from strict 60/20/20 envelope budgeting and voice micro-logging. Freelancers use 3-month buffer reserves and invoice generators. Business owners use multi-card departmental caps and CSV audit exports."
+    },
+    {
+      "id": "TRAIN-FIN-011",
+      "category": "CAT_SECURITY_PRIV",
+      "instruction": "Where is my financial data stored and how is it kept private?",
+      "input": "",
+      "output": "All calculations, NLP intent classification, and anomaly scans execute locally on-device. Data is encrypted with AES-256 and PostgreSQL/Supabase security, protected by biometric hardware auth."
+    }
+  ]
+}

@@ -28,6 +28,9 @@ import {
   Shield,
   Info,
   Smartphone,
+  CreditCard,
+  Repeat,
+  FileText,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -79,6 +82,8 @@ const ALL_SEARCH_ITEMS: SearchItem[] = [
   { label: "Dashboard", sub: "Overview & analytics", path: "/app", icon: LayoutDashboard, group: "Pages" },
   { label: "Analytics", sub: "Charts and spending trends", path: "/app/analytics", icon: BarChart3, group: "Pages" },
   { label: "Transactions", sub: "All income and expense entries", path: "/app/transactions", icon: Receipt, group: "Pages" },
+  { label: "Virtual Card", sub: "Multi-card wallet, limits & security controls", path: "/app/virtual-card", icon: CreditCard, group: "Pages" },
+  { label: "Statements & Invoicing", sub: "PDF statements, reimbursement & UPI QR", path: "/app/statements", icon: FileText, group: "Pages" },
   { label: "Budget", sub: "Monthly budget planning", path: "/app/budget", icon: Wallet, group: "Pages" },
   { label: "Goals", sub: "Savings goal tracking", path: "/app/goals", icon: Target, group: "Pages" },
   { label: "Calculator", sub: "EMI, SIP, FD, loan, savings calculators", path: "/app/calculator", icon: CalcIcon, group: "Pages" },
@@ -277,6 +282,8 @@ const navGroups = [
     translationKey: "money",
     items: [
       { name: "Transactions", translationKey: "transactions", path: "/app/transactions", icon: Receipt },
+      { name: "Virtual Card", translationKey: "virtualCard", path: "/app/virtual-card", icon: CreditCard },
+      { name: "Statements & Invoicing", translationKey: "statements", path: "/app/statements", icon: FileText },
       { name: "Budget", translationKey: "budget", path: "/app/budget", icon: Wallet },
       { name: "Goals", translationKey: "goals", path: "/app/goals", icon: Target },
       { name: "Calculator", translationKey: "calculator", path: "/app/calculator", icon: CalcIcon },

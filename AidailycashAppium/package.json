@@ -1,0 +1,21 @@
+{
+  "name": "aidailycash-appium",
+  "version": "1.0.0",
+  "description": "Parametric 1,111 Android Mobile Appium Test Suite for Aidailycash",
+  "main": "wdio.conf.js",
+  "scripts": {
+    "test:mobile": "wdio run wdio.conf.js",
+    "report:html": "node utils/generateHtmlReport.js",
+    "report:fallback": "node utils/generateFallbackReport.js"
+  },
+  "dependencies": {
+    "@wdio/appium-service": "^8.36.0",
+    "@wdio/cli": "^8.36.0",
+    "@wdio/local-runner": "^8.36.0",
+    "@wdio/mocha-framework": "^8.36.0",
+    "@wdio/spec-reporter": "^8.36.0",
+    "appium": "^2.5.1",
+    "appium-uiautomator2-driver": "^3.5.0",
+    "exceljs": "^4.4.0"
+  }
+}

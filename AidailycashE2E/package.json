@@ -1,0 +1,17 @@
+{
+  "name": "aidailycash-e2e",
+  "version": "1.0.0",
+  "description": "Comprehensive 1,100 Web E2E Test Suite and Reporting for Aidailycash",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha tests/mega_web_1100.test.js --timeout 120000 --reporter utils/excelReporter.js",
+    "test:local": "mocha tests/mega_web_1100.test.js --timeout 120000",
+    "security": "node scripts/generateWebSecuritySuite.js"
+  },
+  "dependencies": {
+    "chromedriver": "^133.0.0",
+    "exceljs": "^4.4.0",
+    "mocha": "^10.4.0",
+    "selenium-webdriver": "^4.20.0"
+  }
+}

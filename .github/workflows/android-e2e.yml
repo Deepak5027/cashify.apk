@@ -1,0 +1,76 @@
+name: Android Mobile E2E (1,111 Tests)
+
+on:
+  push:
+    paths:
+      - 'aifinancify_flutter/**'
+      - 'AidailycashAppium/**'
+  pull_request:
+    paths:
+      - 'aifinancify_flutter/**'
+      - 'AidailycashAppium/**'
+  workflow_dispatch:
+
+jobs:
+  mobile-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Build Android Debug APK
+        working-directory: ./aifinancify_flutter
+        run: |
+          flutter pub get
+          flutter build apk --debug || (cd android && ./gradlew assembleDebug --no-daemon)
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Appium and Dependencies
+        working-directory: ./AidailycashAppium
+        run: |
+          npm install
+          npx appium driver install uiautomator2 || true
+
+      - name: Enable KVM Hardware Acceleration
+        run: |
+          echo '=== Checking KVM Status ==='
+          sudo apt-get update && sudo apt-get install -y cpu-checker
+          kvm-ok || echo "KVM status check completed"
+          sudo chmod 666 /dev/kvm || true
+
+      - name: Run Appium Tests in Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: Nexus 6
+          script: |
+            export APK_PATH="${{ github.workspace }}/aifinancify_flutter/build/app/outputs/flutter-apk/app-debug.apk"
+            cd AidailycashAppium
+            chmod +x scripts/ci_run_tests.sh
+            ./scripts/ci_run_tests.sh
+
+      - name: Upload Mobile Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-appium-reports
+          path: AidailycashAppium/Test_Results/

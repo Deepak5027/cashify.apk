@@ -57,18 +57,24 @@ export default function AuthCallback() {
 
         if (accessToken) {
           console.log('[AuthCallback] Session established, syncing user...');
-          await authService.handleOAuthCallback(accessToken);
+          const isValid = await authService.handleOAuthCallback(accessToken);
           const state = authService.getState();
-          toast.success(`Welcome, ${state.user?.name || state.user?.email || 'User'}!`);
-          navigate('/app', { replace: true });
-          return;
+
+          if (isValid && state.isAuthenticated && state.user) {
+            console.log('[AuthCallback] Authentication verified successfully for user:', state.user.email);
+            toast.success(`Welcome, ${state.user.name || state.user.email || 'User'}!`);
+            navigate('/app', { replace: true });
+            return;
+          }
         }
 
-        console.warn('[AuthCallback] No session established. Redirecting to login.');
+        console.warn('[AuthCallback] No valid session established. Clearing token and redirecting to /login.');
+        localStorage.removeItem('token');
         toast.error('Authentication failed. Please try signing in again.');
         navigate('/login', { replace: true });
       } catch (err: any) {
-        console.error('[AuthCallback] Error:', err);
+        console.error('[AuthCallback] Unhandled error during auth callback:', err);
+        localStorage.removeItem('token');
         toast.error('Sign-in failed. Please try again.');
         navigate('/login', { replace: true });
       }

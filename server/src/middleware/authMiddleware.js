@@ -26,23 +26,34 @@ export async function verifyJWT(req, res, next) {
 
     let user = null;
     if (userIdOrSub) {
-      user = await prisma.user.findUnique({ where: { id: userIdOrSub } });
+      try {
+        user = await prisma.user.findUnique({ where: { id: userIdOrSub } });
+      } catch (_) {}
     }
     if (!user && email) {
-      user = await prisma.user.findUnique({ where: { email } });
+      try {
+        user = await prisma.user.findUnique({ where: { email } });
+      } catch (_) {}
     }
 
-    if (!user && email) {
-      user = await prisma.user.create({
-        data: {
-          id: userIdOrSub || undefined,
-          email,
-          name: payload.name || payload.user_metadata?.full_name || payload.user_metadata?.name || email.split('@')[0],
-          image: payload.picture || payload.user_metadata?.avatar_url || payload.user_metadata?.picture || null,
-          lastLogin: new Date(),
-          lastLoginDevice: 'Supabase OAuth',
-        }
-      });
+    if (!user && (userIdOrSub || email)) {
+      const fallbackId = userIdOrSub || `user_${Date.now()}`;
+      try {
+        user = await prisma.user.upsert({
+          where: { id: fallbackId },
+          update: { lastLogin: new Date() },
+          create: {
+            id: fallbackId,
+            email: email || `${fallbackId}@user.local`,
+            name: payload.name || payload.user_metadata?.full_name || payload.user_metadata?.name || (email ? email.split('@')[0] : 'User'),
+            image: payload.picture || payload.user_metadata?.avatar_url || payload.user_metadata?.picture || null,
+            lastLogin: new Date(),
+            lastLoginDevice: 'Web / OAuth',
+          }
+        });
+      } catch (upsertErr) {
+        user = await prisma.user.findFirst({ where: { OR: [{ id: fallbackId }, ...(email ? [{ email }] : [])] } });
+      }
     }
 
     if (!user) {

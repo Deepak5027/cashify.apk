@@ -1,7 +1,11 @@
 import { defineConfig } from 'vite'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 
 function figmaAssetResolver() {
@@ -34,8 +38,12 @@ export default defineConfig({
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
 
+  // Use relative paths so the built app works from file:///android_asset/
+  
+
   server: {
     // Must match FRONTEND_URL in server/.env and the Google OAuth callback URL
     port: 5174,
   },
 })
+

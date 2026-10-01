@@ -80,10 +80,8 @@ export default function Login() {
       if (!result.success) {
         toast.error(result.error || 'Google sign-in failed');
         setGoogleLoading(false);
-      } else {
-        toast.success('Welcome back!');
-        navigate('/app');
       }
+      // Full-page OAuth redirect will navigate to /auth/callback?token=... and then /app
     } catch (err: any) {
       toast.error(err.message || 'Google sign-in failed');
       setGoogleLoading(false);

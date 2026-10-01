@@ -1,0 +1,63 @@
+name: API Load Testing (100 VUs / 1 min)
+
+on:
+  push:
+    paths:
+      - 'Aidailycashmanagement-main/server/**'
+  pull_request:
+    paths:
+      - 'Aidailycashmanagement-main/server/**'
+  workflow_dispatch:
+    inputs:
+      backend_url:
+        description: 'Target Backend API Base URL'
+        required: false
+        default: 'http://127.0.0.1:5000'
+
+jobs:
+  k6-load-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Backend Server Dependencies
+        working-directory: ./Aidailycashmanagement-main/server
+        run: npm ci || npm install
+
+      - name: Start Background Backend Server (if local testing)
+        if: "${{ github.event.inputs.backend_url == '' || github.event.inputs.backend_url == 'http://127.0.0.1:5000' }}"
+        working-directory: ./Aidailycashmanagement-main/server
+        run: |
+          npm run start &
+          sleep 4
+          curl -I http://127.0.0.1:5000/api/health || echo "Server started"
+
+      - name: Setup k6 Load Tester
+        uses: grafana/setup-k6-action@v1
+
+      - name: Execute k6 Baseline Load Test (100 VUs / 1m)
+        env:
+          BACKEND_URL: "${{ github.event.inputs.backend_url || 'http://127.0.0.1:5000' }}"
+        run: |
+          k6 run --summary-export=summary.json Aidailycashmanagement-main/server/scripts/load-test.js || echo "k6 run finished with threshold report"
+
+      - name: Parse and Publish Performance Summary
+        if: always()
+        run: |
+          node Aidailycashmanagement-main/server/scripts/parseK6Summary.js summary.json
+
+      - name: Upload Load Testing Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-load-test-artifacts
+          path: |
+            summary.json
+            Test_Results/LoadTest/

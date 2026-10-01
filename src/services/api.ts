@@ -381,3 +381,136 @@ export const activitiesAPI = {
     return { data: list, activities: list };
   },
 };
+
+// ==========================================
+// 💳 VIRTUAL & REAL WALLET CARDS API
+// ==========================================
+export interface VirtualCard {
+  id?: number;
+  cardName?: string;
+  cardType?: string;
+  cardNetwork?: string;
+  bankName?: string;
+  cardNumber: string;
+  cardHolder: string;
+  expiryDate: string;
+  cvv: string;
+  spendingLimit: number;
+  currentSpend: number;
+  isFrozen: boolean;
+  tapToPayEnabled: boolean;
+  internationalTx: boolean;
+  cardColor: string;
+  isPrimary?: boolean;
+}
+
+export const virtualCardAPI = {
+  async get(): Promise<{ data: VirtualCard; allCards?: VirtualCard[] }> {
+    const res = await apiClient.get('/api/virtual-card');
+    return { data: res.data || res, allCards: res.allCards || (res.data ? [res.data] : []) };
+  },
+  async getAll(): Promise<{ data: VirtualCard[] }> {
+    const res = await apiClient.get('/api/virtual-cards');
+    return { data: Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []) };
+  },
+  async create(cardData: Partial<VirtualCard>): Promise<{ data: VirtualCard }> {
+    const res = await apiClient.post('/api/virtual-card', cardData);
+    return { data: res.data || res };
+  },
+  async update(idOrUpdates: number | Partial<VirtualCard>, updates?: Partial<VirtualCard>): Promise<{ data: VirtualCard }> {
+    if (typeof idOrUpdates === 'number') {
+      const res = await apiClient.put(`/api/virtual-card/${idOrUpdates}`, updates || {});
+      return { data: res.data || res };
+    }
+    const res = await apiClient.put('/api/virtual-card', idOrUpdates);
+    return { data: res.data || res };
+  },
+  async delete(id: number): Promise<{ success: boolean }> {
+    const res = await apiClient.delete(`/api/virtual-card/${id}`);
+    return { success: res.success !== false };
+  },
+};
+
+// ==========================================
+// 🧛 SUBSCRIPTION & VAMPIRE DRAIN API
+// ==========================================
+export interface Subscription {
+  id?: number;
+  name: string;
+  amount: number;
+  billingCycle: 'monthly' | 'yearly' | 'weekly' | string;
+  category: string;
+  nextBillingDate: string;
+  reminderDays: number;
+  isActive: boolean;
+  color?: string;
+  iconName?: string;
+}
+
+export const subscriptionAPI = {
+  async getAll(): Promise<{ data: Subscription[] }> {
+    const res = await apiClient.get('/api/subscriptions');
+    return { data: Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []) };
+  },
+  async create(data: Partial<Subscription>): Promise<{ data: Subscription }> {
+    const res = await apiClient.post('/api/subscriptions', data);
+    return { data: res.data || res };
+  },
+  async update(id: number, data: Partial<Subscription>): Promise<{ data: Subscription }> {
+    const res = await apiClient.put(`/api/subscriptions/${id}`, data);
+    return { data: res.data || res };
+  },
+  async delete(id: number): Promise<{ success: boolean }> {
+    const res = await apiClient.delete(`/api/subscriptions/${id}`);
+    return { success: res.success !== false };
+  },
+  async autoDetect(): Promise<{ data: Subscription[] }> {
+    const res = await apiClient.post('/api/subscriptions/auto-detect', {});
+    return { data: Array.isArray(res.data) ? res.data : [] };
+  },
+};
+
+// ==========================================
+// 📄 INVOICING & PAYMENT QR API
+// ==========================================
+export interface InvoiceItem {
+  id?: number;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface Invoice {
+  id?: number;
+  invoiceNo: string;
+  clientName: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  upiId?: string;
+  issueDate: string;
+  dueDate?: string;
+  status: 'paid' | 'unpaid' | 'overdue' | string;
+  taxRate: number;
+  notes?: string;
+  items: InvoiceItem[];
+  totalAmount: number;
+}
+
+export const invoiceAPI = {
+  async getAll(): Promise<{ data: Invoice[] }> {
+    const res = await apiClient.get('/api/invoices');
+    return { data: Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []) };
+  },
+  async create(data: Partial<Invoice>): Promise<{ data: Invoice }> {
+    const res = await apiClient.post('/api/invoices', data);
+    return { data: res.data || res };
+  },
+  async update(id: number, data: Partial<Invoice>): Promise<{ data: Invoice }> {
+    const res = await apiClient.put(`/api/invoices/${id}`, data);
+    return { data: res.data || res };
+  },
+  async delete(id: number): Promise<{ success: boolean }> {
+    const res = await apiClient.delete(`/api/invoices/${id}`);
+    return { success: res.success !== false };
+  },
+};

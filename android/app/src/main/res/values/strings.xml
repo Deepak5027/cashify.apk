@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">FinancerperfectAi</string>
-    <string name="title_activity_main">FinancerperfectAi</string>
-    <string name="package_name">com.financeai.app</string>
-    <string name="custom_url_scheme">com.financeai.app</string>
-</resources>

@@ -12,8 +12,8 @@ dotenv.config();
 const app = express();
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile native apps, Capacitor, curl) or local network origins
-    if (!origin || origin.includes('localhost') || origin.includes('192.168.') || origin.includes('10.0.2.2') || origin.includes('capacitor://')) {
+    // Allow requests with no origin (curl, etc.) or local network origins
+    if (!origin || origin.includes('localhost') || origin.includes('192.168.') || origin.includes('10.0.2.2')) {
       return callback(null, true);
     }
     return callback(null, true);

@@ -6,15 +6,6 @@ export function getApiBaseUrl(): string {
   const envUrl = (import.meta as any).env?.VITE_API_BASE;
   if (envUrl) return envUrl.replace(/\/$/, '');
 
-  const isNativeApp =
-    !!(window as any).Capacitor ||
-    window.location.protocol === 'capacitor:' ||
-    (window.location.hostname === 'localhost' && window.location.port === '');
-
-  if (isNativeApp) {
-    return 'https://financeai-api-ba5p.onrender.com';
-  }
-
   return 'https://financeai-api-ba5p.onrender.com';
 }
 
@@ -72,8 +63,10 @@ async function request(path: string, opts: any = {}) {
 }
 
 export default {
+  getApiBaseUrl,
   get: (path: string) => request(path, { method: 'GET' }),
   post: (path: string, body?: any) => request(path, { method: 'POST', body }),
   put: (path: string, body?: any) => request(path, { method: 'PUT', body }),
   del: (path: string) => request(path, { method: 'DELETE' }),
+  delete: (path: string) => request(path, { method: 'DELETE' }),
 };

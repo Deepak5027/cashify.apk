@@ -201,7 +201,7 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Backend API Server Settings (Mobile APK & Remote Server) */}
+      {/* Backend API Server Settings (Remote Server) */}
       <div className="rounded-2xl p-6 space-y-4" style={glassCard}>
         <div className="flex items-center justify-between pb-2 border-b border-white/5">
           <div className="flex items-center gap-2">
@@ -219,11 +219,11 @@ export default function Settings() {
             type="text"
             value={customApiUrl}
             onChange={(e) => setCustomApiUrl(e.target.value)}
-            placeholder="http://192.168.1.4:4000"
+            placeholder="http://localhost:4000"
             className="w-full px-3 py-2 rounded-xl text-xs text-white bg-white/5 border border-white/10 focus:outline-none focus:border-emerald-500 font-mono"
           />
           <p className="text-[11px] text-gray-400">
-            Enables your installed Android APK to communicate directly with your computer's live Node.js server and database at <code className="text-emerald-400">http://192.168.1.4:4000</code> over Wi-Fi, or any custom cloud domain.
+            Enables your web application to communicate directly with your custom Node.js server and database, or any cloud domain.
           </p>
         </div>
       </div>

@@ -1297,4 +1297,690 @@ router.get('/activities', verifyJWT, async (req, res) => {
   }
 });
 
+// ==========================================
+// VIRTUAL & REAL CARDS (MULTI-CARD WALLET)
+// ==========================================
+
+// Helper to compute month-to-date spending from real ledger
+async function getMonthlySpend(userId) {
+  try {
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const monthlyTxs = await prisma.transaction.findMany({
+      where: { userId, type: 'expense', date: { gte: startOfMonth } }
+    });
+    return monthlyTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  } catch (_) {
+    return 0;
+  }
+}
+
+// GET /api/virtual-card - Fetch primary or all cards
+router.get('/virtual-card', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId || req.user?.id;
+    let cards = [];
+    try {
+      cards = await prisma.virtualCard.findMany({
+        where: { userId },
+        orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }]
+      });
+    } catch (_) {}
+
+    // Initialize default primary card if none exist
+    if (cards.length === 0) {
+      try {
+        const starter = await prisma.virtualCard.create({
+          data: {
+            userId,
+            cardName: 'AiFinancify Black Metal',
+            cardType: 'Virtual Debit',
+            cardNetwork: 'VISA',
+            bankName: 'Federal / NeoBank',
+            cardNumber: `4532 •••• •••• ${Math.floor(1000 + Math.random() * 9000)}`,
+            cardHolder: (req.user?.name || 'AIFINANCIFY MEMBER').toUpperCase(),
+            expiryDate: '08/29',
+            cvv: `${Math.floor(100 + Math.random() * 900)}`,
+            spendingLimit: 50000,
+            currentSpend: 0,
+            isFrozen: false,
+            tapToPayEnabled: true,
+            internationalTx: false,
+            cardColor: 'indigo',
+            isPrimary: true,
+          }
+        });
+        cards = [starter];
+      } catch (e) {
+        console.error('Card init error:', e);
+      }
+    }
+
+    const currentSpend = await getMonthlySpend(userId);
+    const primaryCard = cards.find(c => c.isPrimary) || cards[0];
+    if (primaryCard) primaryCard.currentSpend = currentSpend;
+
+    res.json({
+      data: primaryCard || cards[0],
+      allCards: cards.map(c => ({ ...c, currentSpend }))
+    });
+  } catch (err) {
+    console.error('Error fetching cards:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to fetch cards' });
+  }
+});
+
+// GET /api/virtual-cards - Get full list of all cards
+router.get('/virtual-cards', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId || req.user?.id;
+    const cards = await prisma.virtualCard.findMany({
+      where: { userId },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }]
+    });
+    const currentSpend = await getMonthlySpend(userId);
+    res.json({ data: cards.map(c => ({ ...c, currentSpend })) });
+  } catch (err) {
+    console.error('Error listing cards:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to list cards' });
+  }
+});
+
+// POST /api/virtual-card - Add a new Real or Virtual Card
+router.post('/virtual-card', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId || req.user?.id;
+    const {
+      cardName,
+      cardType,
+      cardNetwork,
+      bankName,
+      cardNumber,
+      cardHolder,
+      expiryDate,
+      cvv,
+      spendingLimit,
+      cardColor,
+      isPrimary,
+    } = req.body || {};
+
+    if (!cardNumber || !cardHolder) {
+      return res.status(400).json({ error: 'validation_error', message: 'Card Number and Cardholder Name are required' });
+    }
+
+    // If set as primary, unmark other cards
+    if (isPrimary) {
+      await prisma.virtualCard.updateMany({
+        where: { userId },
+        data: { isPrimary: false }
+      });
+    }
+
+    // Mask card number if user provided full 16 digits
+    let formattedNumber = String(cardNumber).trim();
+    if (formattedNumber.replace(/\s+/g, '').length === 16 && !formattedNumber.includes('•')) {
+      const clean = formattedNumber.replace(/\s+/g, '');
+      formattedNumber = `${clean.slice(0, 4)} •••• •••• ${clean.slice(12, 16)}`;
+    }
+
+    const newCard = await prisma.virtualCard.create({
+      data: {
+        userId,
+        cardName: cardName?.trim() || 'Custom Card',
+        cardType: cardType || 'Debit Card',
+        cardNetwork: cardNetwork || 'VISA',
+        bankName: bankName?.trim() || 'User Bank',
+        cardNumber: formattedNumber,
+        cardHolder: cardHolder?.trim().toUpperCase(),
+        expiryDate: expiryDate?.trim() || '12/28',
+        cvv: cvv?.trim() || '123',
+        spendingLimit: parseFloat(spendingLimit) || 50000,
+        currentSpend: 0,
+        isFrozen: false,
+        tapToPayEnabled: true,
+        internationalTx: false,
+        cardColor: cardColor || 'indigo',
+        isPrimary: Boolean(isPrimary),
+      }
+    });
+
+    await logActivity(
+      userId,
+      'card_added',
+      `Card Added: ${newCard.cardName}`,
+      `${newCard.cardType} (${newCard.cardNumber}) linked to wallet`,
+      'card'
+    );
+
+    res.status(201).json({ data: newCard });
+  } catch (err) {
+    console.error('Error creating card:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to add card' });
+  }
+});
+
+// PUT /api/virtual-card/:id - Edit card details or toggles
+router.put('/virtual-card/:id', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId || req.user?.id;
+    const id = parseInt(req.params.id, 10);
+    const body = req.body || {};
+
+    const existing = await prisma.virtualCard.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'not_found', message: 'Card not found' });
+    }
+
+    if (body.isPrimary) {
+      await prisma.virtualCard.updateMany({
+        where: { userId },
+        data: { isPrimary: false }
+      });
+    }
+
+    let formattedNumber = body.cardNumber !== undefined ? String(body.cardNumber).trim() : existing.cardNumber;
+    if (formattedNumber.replace(/\s+/g, '').length === 16 && !formattedNumber.includes('•')) {
+      const clean = formattedNumber.replace(/\s+/g, '');
+      formattedNumber = `${clean.slice(0, 4)} •••• •••• ${clean.slice(12, 16)}`;
+    }
+
+    const updated = await prisma.virtualCard.update({
+      where: { id },
+      data: {
+        ...(body.cardName !== undefined && { cardName: body.cardName.trim() }),
+        ...(body.cardType !== undefined && { cardType: body.cardType }),
+        ...(body.cardNetwork !== undefined && { cardNetwork: body.cardNetwork }),
+        ...(body.bankName !== undefined && { bankName: body.bankName.trim() }),
+        ...(body.cardNumber !== undefined && { cardNumber: formattedNumber }),
+        ...(body.cardHolder !== undefined && { cardHolder: body.cardHolder.trim().toUpperCase() }),
+        ...(body.expiryDate !== undefined && { expiryDate: body.expiryDate.trim() }),
+        ...(body.cvv !== undefined && { cvv: body.cvv.trim() }),
+        ...(body.spendingLimit !== undefined && { spendingLimit: parseFloat(body.spendingLimit) }),
+        ...(body.isFrozen !== undefined && { isFrozen: Boolean(body.isFrozen) }),
+        ...(body.tapToPayEnabled !== undefined && { tapToPayEnabled: Boolean(body.tapToPayEnabled) }),
+        ...(body.internationalTx !== undefined && { internationalTx: Boolean(body.internationalTx) }),
+        ...(body.cardColor !== undefined && { cardColor: body.cardColor }),
+        ...(body.isPrimary !== undefined && { isPrimary: Boolean(body.isPrimary) }),
+      }
+    });
+
+    res.json({ data: updated });
+  } catch (err) {
+    console.error('Error updating card:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to update card' });
+  }
+});
+
+// Legacy PUT /api/virtual-card (Updates primary card)
+router.put('/virtual-card', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId || req.user?.id;
+    const body = req.body || {};
+    let card = await prisma.virtualCard.findFirst({
+      where: { userId, ...(body.id ? { id: parseInt(body.id, 10) } : {}) },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }]
+    });
+
+    if (!card) {
+      card = await prisma.virtualCard.create({
+        data: { userId, ...body }
+      });
+    } else {
+      card = await prisma.virtualCard.update({
+        where: { id: card.id },
+        data: {
+          ...(body.isFrozen !== undefined && { isFrozen: body.isFrozen }),
+          ...(body.tapToPayEnabled !== undefined && { tapToPayEnabled: body.tapToPayEnabled }),
+          ...(body.internationalTx !== undefined && { internationalTx: body.internationalTx }),
+          ...(body.spendingLimit !== undefined && { spendingLimit: parseFloat(body.spendingLimit) }),
+          ...(body.cardColor && { cardColor: body.cardColor }),
+          ...(body.cardHolder && { cardHolder: body.cardHolder.toUpperCase() }),
+          ...(body.cardName && { cardName: body.cardName }),
+          ...(body.cardNumber && { cardNumber: body.cardNumber }),
+          ...(body.expiryDate && { expiryDate: body.expiryDate }),
+          ...(body.cvv && { cvv: body.cvv }),
+          ...(body.cardType && { cardType: body.cardType }),
+          ...(body.cardNetwork && { cardNetwork: body.cardNetwork }),
+          ...(body.bankName && { bankName: body.bankName }),
+        }
+      });
+    }
+
+    res.json({ data: card });
+  } catch (err) {
+    console.error('Error updating virtual card:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to update card' });
+  }
+});
+
+// DELETE /api/virtual-card/:id - Delete a card
+router.delete('/virtual-card/:id', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId || req.user?.id;
+    const id = parseInt(req.params.id, 10);
+
+    const existing = await prisma.virtualCard.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'not_found', message: 'Card not found' });
+    }
+
+    await prisma.virtualCard.delete({ where: { id } });
+    res.json({ success: true, message: 'Card deleted' });
+  } catch (err) {
+    console.error('Error deleting card:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to delete card' });
+  }
+});
+
+// ==========================================
+// SUBSCRIPTIONS & RECURRING BILLS
+// ==========================================
+router.get('/subscriptions', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId || req.user?.id;
+    let subscriptions = [];
+    try {
+      subscriptions = await prisma.subscription.findMany({
+        where: { userId },
+        orderBy: { nextBillingDate: 'asc' }
+      });
+    } catch (_) {}
+
+    // If user has no subscriptions yet, initialize realistic starters
+    if (subscriptions.length === 0) {
+      try {
+        const next1 = new Date(); next1.setDate(next1.getDate() + 4);
+        const next2 = new Date(); next2.setDate(next2.getDate() + 12);
+        const next3 = new Date(); next3.setDate(next3.getDate() + 22);
+
+        await prisma.subscription.createMany({
+          data: [
+            {
+              userId,
+              name: 'Netflix Premium 4K',
+              amount: 649,
+              billingCycle: 'monthly',
+              category: 'Entertainment',
+              nextBillingDate: next1,
+              reminderDays: 3,
+              isActive: true,
+              color: '#E50914',
+              iconName: 'subscriptions',
+            },
+            {
+              userId,
+              name: 'Spotify Premium Duo',
+              amount: 149,
+              billingCycle: 'monthly',
+              category: 'Entertainment',
+              nextBillingDate: next2,
+              reminderDays: 2,
+              isActive: true,
+              color: '#1DB954',
+              iconName: 'subscriptions',
+            },
+            {
+              userId,
+              name: 'AWS Cloud Hosting',
+              amount: 1850,
+              billingCycle: 'monthly',
+              category: 'Cloud & Hosting',
+              nextBillingDate: next3,
+              reminderDays: 5,
+              isActive: true,
+              color: '#FF9900',
+              iconName: 'subscriptions',
+            },
+          ]
+        });
+
+        subscriptions = await prisma.subscription.findMany({
+          where: { userId },
+          orderBy: { nextBillingDate: 'asc' }
+        });
+      } catch (seedErr) {
+        console.error('Subscription init error:', seedErr);
+      }
+    }
+
+    res.json({ data: subscriptions });
+  } catch (err) {
+    console.error('Error fetching subscriptions:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to fetch subscriptions' });
+  }
+});
+
+router.post('/subscriptions', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { name, amount, billingCycle, category, nextBillingDate, reminderDays, color, iconName } = req.body;
+
+    if (!name || amount === undefined) {
+      return res.status(400).json({ error: 'validation_error', message: 'Name and amount are required' });
+    }
+
+    const sub = await prisma.subscription.create({
+      data: {
+        userId,
+        name,
+        amount: parseFloat(amount),
+        billingCycle: billingCycle || 'monthly',
+        category: category || 'Entertainment',
+        nextBillingDate: nextBillingDate ? new Date(nextBillingDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        reminderDays: reminderDays ? parseInt(reminderDays) : 3,
+        isActive: true,
+        color: color || '#6366F1',
+        iconName: iconName || 'subscriptions',
+      }
+    });
+
+    await logActivity(
+      userId,
+      'subscription_created',
+      `New Subscription Tracked: ${name}`,
+      `₹${sub.amount.toFixed(2)} / ${sub.billingCycle}`,
+      'subscription'
+    );
+
+    res.status(201).json({ data: sub });
+  } catch (err) {
+    console.error('Error creating subscription:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to create subscription' });
+  }
+});
+
+router.put('/subscriptions/:id', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const id = parseInt(req.params.id);
+    const body = req.body;
+
+    const existing = await prisma.subscription.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'not_found', message: 'Subscription not found' });
+    }
+
+    const updated = await prisma.subscription.update({
+      where: { id },
+      data: {
+        name: body.name || existing.name,
+        amount: body.amount !== undefined ? parseFloat(body.amount) : existing.amount,
+        billingCycle: body.billingCycle || existing.billingCycle,
+        category: body.category || existing.category,
+        nextBillingDate: body.nextBillingDate ? new Date(body.nextBillingDate) : existing.nextBillingDate,
+        reminderDays: body.reminderDays !== undefined ? parseInt(body.reminderDays) : existing.reminderDays,
+        isActive: body.isActive !== undefined ? body.isActive : existing.isActive,
+        color: body.color || existing.color,
+        iconName: body.iconName || existing.iconName,
+      }
+    });
+
+    res.json({ data: updated });
+  } catch (err) {
+    console.error('Error updating subscription:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to update subscription' });
+  }
+});
+
+router.delete('/subscriptions/:id', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const id = parseInt(req.params.id);
+
+    const existing = await prisma.subscription.findFirst({
+      where: { id, userId }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'not_found', message: 'Subscription not found' });
+    }
+
+    await prisma.subscription.delete({ where: { id } });
+
+    await logActivity(
+      userId,
+      'subscription_deleted',
+      `Cancelled Subscription: ${existing.name}`,
+      `Removed from active recurring billing`,
+      'subscription'
+    );
+
+    res.json({ success: true, message: 'Subscription removed' });
+  } catch (err) {
+    console.error('Error deleting subscription:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to delete subscription' });
+  }
+});
+
+router.post('/subscriptions/auto-detect', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const txs = await prisma.transaction.findMany({
+      where: { userId, type: 'expense' }
+    });
+
+    const subKeywords = [
+      { name: 'Netflix', category: 'Entertainment', color: '#E50914', defaultAmt: 499 },
+      { name: 'Spotify', category: 'Entertainment', color: '#1DB954', defaultAmt: 119 },
+      { name: 'Amazon Prime', category: 'Entertainment', color: '#00A8E1', defaultAmt: 299 },
+      { name: 'YouTube Premium', category: 'Entertainment', color: '#FF0000', defaultAmt: 129 },
+      { name: 'Disney+ Hotstar', category: 'Entertainment', color: '#0C5460', defaultAmt: 299 },
+      { name: 'Apple iCloud / One', category: 'Cloud & Tech', color: '#555555', defaultAmt: 75 },
+      { name: 'Gym / Fitness', category: 'Health & Fitness', color: '#10B981', defaultAmt: 1500 },
+      { name: 'Broadband Internet', category: 'Bills & Utilities', color: '#3B82F6', defaultAmt: 999 },
+      { name: 'GitHub Pro', category: 'Cloud & Tech', color: '#24292E', defaultAmt: 350 },
+      { name: 'ChatGPT Plus', category: 'AI & Productivity', color: '#10A37F', defaultAmt: 1999 },
+    ];
+
+    const detected = [];
+    for (const sub of subKeywords) {
+      const match = txs.find(t =>
+        (t.description || '').toLowerCase().includes(sub.name.toLowerCase()) ||
+        (t.category || '').toLowerCase().includes(sub.name.toLowerCase())
+      );
+      if (match) {
+        detected.push({
+          name: sub.name,
+          amount: match.amount || sub.defaultAmt,
+          category: sub.category,
+          billingCycle: 'monthly',
+          color: sub.color,
+          nextBillingDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+          reminderDays: 3,
+        });
+      }
+    }
+
+    res.json({ data: detected });
+  } catch (err) {
+    console.error('Error auto-detecting subscriptions:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to auto-detect subscriptions' });
+  }
+});
+
+// ==========================================
+// 📄 INVOICING & PAYMENT QR CODE GENERATOR
+// ==========================================
+
+// GET /api/invoices - Fetch user's invoices
+router.get('/invoices', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId || req.user?.id;
+    let invoices = [];
+    try {
+      invoices = await prisma.invoice.findMany({
+        where: { userId },
+        include: { items: true },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (_) {}
+
+    if (invoices.length === 0) {
+      try {
+        const invDue = new Date(); invDue.setDate(invDue.getDate() + 14);
+        const starter = await prisma.invoice.create({
+          data: {
+            userId,
+            invoiceNo: `INV-${new Date().getFullYear()}-0001`,
+            clientName: 'Acme Innovations Corp',
+            clientEmail: 'billing@acmeinnovations.com',
+            upiId: 'deepak@okaxis',
+            dueDate: invDue,
+            status: 'unpaid',
+            taxRate: 18.0,
+            notes: 'Thank you for your business. Please scan the UPI QR code to complete payment.',
+            totalAmount: 17700,
+            items: {
+              create: [
+                {
+                  description: 'Full-Stack Architecture & Cloud Financial Setup',
+                  quantity: 1,
+                  unitPrice: 15000,
+                },
+              ],
+            },
+          },
+          include: { items: true },
+        });
+        invoices = [starter];
+      } catch (seedErr) {
+        console.error('Invoice init error:', seedErr);
+      }
+    }
+
+    res.json({ data: invoices });
+  } catch (err) {
+    console.error('Error fetching invoices:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to fetch invoices' });
+  }
+});
+
+// POST /api/invoices - Create new invoice with line items
+router.post('/invoices', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId || req.user?.id;
+    const { clientName, clientEmail, clientPhone, upiId, dueDate, status, taxRate, notes, items } = req.body;
+
+    if (!clientName || !clientName.trim()) {
+      return res.status(400).json({ error: 'validation_error', message: 'Client name is required' });
+    }
+
+    const lineItems = Array.isArray(items) ? items : [];
+    let subtotal = 0;
+    for (const item of lineItems) {
+      const q = parseFloat(item.quantity) || 1;
+      const p = parseFloat(item.unitPrice) || 0;
+      subtotal += q * p;
+    }
+    const tRate = parseFloat(taxRate) || 0;
+    const taxAmt = (subtotal * tRate) / 100;
+    const totalAmount = subtotal + taxAmt;
+
+    const invoiceCount = await prisma.invoice.count({ where: { userId } });
+    const invoiceNo = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(4, '0')}`;
+
+    const invoice = await prisma.invoice.create({
+      data: {
+        userId,
+        invoiceNo,
+        clientName: clientName.trim(),
+        clientEmail: clientEmail ? clientEmail.trim() : null,
+        clientPhone: clientPhone ? clientPhone.trim() : null,
+        upiId: upiId ? upiId.trim() : 'deepak@okaxis',
+        dueDate: dueDate ? new Date(dueDate) : null,
+        status: status || 'unpaid',
+        taxRate: tRate,
+        notes: notes ? notes.trim() : null,
+        totalAmount,
+        items: {
+          create: lineItems.map((it) => ({
+            description: it.description || 'Service/Item',
+            quantity: parseFloat(it.quantity) || 1,
+            unitPrice: parseFloat(it.unitPrice) || 0,
+          })),
+        },
+      },
+      include: { items: true },
+    });
+
+    await prisma.activity.create({
+      data: {
+        userId,
+        action: 'INVOICE_CREATED',
+        title: `Generated Invoice ${invoiceNo}`,
+        details: `Client: ${clientName}, Amount: ₹${totalAmount.toFixed(2)}`,
+        type: 'success',
+      },
+    });
+
+    res.status(201).json({ data: invoice });
+  } catch (err) {
+    console.error('Error creating invoice:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to create invoice' });
+  }
+});
+
+// PUT /api/invoices/:id - Update invoice status or details
+router.put('/invoices/:id', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId || req.user?.id;
+    const id = parseInt(req.params.id, 10);
+    const { status, notes, dueDate } = req.body;
+
+    const existing = await prisma.invoice.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'not_found', message: 'Invoice not found' });
+    }
+
+    const updated = await prisma.invoice.update({
+      where: { id },
+      data: {
+        ...(status && { status }),
+        ...(notes !== undefined && { notes }),
+        ...(dueDate && { dueDate: new Date(dueDate) }),
+      },
+      include: { items: true },
+    });
+
+    res.json({ data: updated });
+  } catch (err) {
+    console.error('Error updating invoice:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to update invoice' });
+  }
+});
+
+// DELETE /api/invoices/:id - Delete invoice
+router.delete('/invoices/:id', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.userId || req.user?.id;
+    const id = parseInt(req.params.id, 10);
+
+    const existing = await prisma.invoice.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'not_found', message: 'Invoice not found' });
+    }
+
+    await prisma.invoice.delete({ where: { id } });
+    res.json({ success: true, message: 'Invoice deleted' });
+  } catch (err) {
+    console.error('Error deleting invoice:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to delete invoice' });
+  }
+});
+
 export default router;
+

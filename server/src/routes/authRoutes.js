@@ -101,53 +101,106 @@ router.post('/reset-password', async (req, res) => {
   res.json({ success: true, message: 'If an account exists, a reset link would be sent (demo mode).' });
 });
 
-router.get('/google', async (req, res) => {
+router.get('/google', (req, res, next) => {
   const redirectParam = req.query.redirect;
   const redirectBase = redirectParam || FRONTEND_URL;
 
+  // Use real Passport Google OAuth if credentials are present
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CLIENT_ID !== 'your_google_client_id') {
+    const stateStr = Buffer.from(JSON.stringify({ redirectBase })).toString('base64');
+    return passport.authenticate('google', { scope: ['profile', 'email'], state: stateStr })(req, res, next);
+  }
+
+  // Fallback demo/dev mode if OAuth credentials are not set
+  (async () => {
+    try {
+      let user = await prisma.user.findFirst({ where: { email: 'google.user@financerperfect.ai' } });
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            email: 'google.user@financerperfect.ai',
+            name: 'Google Verified User',
+            image: 'https://lh3.googleusercontent.com/a/default-user',
+            lastLogin: new Date(),
+            lastLoginDevice: 'Google OAuth Web',
+          }
+        });
+      } else {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLogin: new Date(), lastLoginDevice: 'Google OAuth Web' }
+        });
+      }
+      const token = signToken(user);
+      return res.redirect(`${redirectBase}/auth/callback?token=${encodeURIComponent(token)}`);
+    } catch (err) {
+      console.error('Google login error:', err);
+      return res.status(500).json({ error: 'auth_failed', message: 'Database query failed', details: err?.message || String(err) });
+    }
+  })();
+});
+
+router.get('/google/callback', (req, res, next) => {
+  passport.authenticate('google', { failureRedirect: '/auth/failure' }, (err, user) => {
+    if (err || !user) {
+      console.error('Google OAuth callback error:', err);
+      return res.redirect(`${FRONTEND_URL}/login?error=oauth_failed`);
+    }
+
+    const token = signToken(user);
+
+    let redirectBase = FRONTEND_URL;
+    if (req.query.state) {
+      try {
+        const decoded = JSON.parse(Buffer.from(req.query.state, 'base64').toString('utf8'));
+        if (decoded.redirectBase) redirectBase = decoded.redirectBase;
+      } catch (e) {}
+    }
+
+    const redirectUrl = `${redirectBase}/auth/callback?token=${encodeURIComponent(token)}`;
+    return res.redirect(redirectUrl);
+  })(req, res, next);
+});
+
+router.get('/failure', (req, res) => res.status(401).json({ error: 'oauth_failure' }));
+
+// Native mobile Google Sign-In exchange
+router.post('/google/native', async (req, res) => {
   try {
-    let user = await prisma.user.findFirst({ where: { email: 'google.user@financerperfect.ai' } });
+    const { email, name, image } = req.body || {};
+    const trimmedEmail = (email || '').trim().toLowerCase();
+    if (!trimmedEmail) {
+      return res.status(400).json({ error: 'missing_email', message: 'Email is required' });
+    }
+    
+    let user = await prisma.user.findUnique({ where: { email: trimmedEmail } });
     if (!user) {
       user = await prisma.user.create({
         data: {
-          email: 'google.user@financerperfect.ai',
-          name: 'Google Verified User',
-          image: 'https://lh3.googleusercontent.com/a/default-user',
+          name: name || trimmedEmail.split('@')[0],
+          email: trimmedEmail,
+          image: image || null,
           lastLogin: new Date(),
-          lastLoginDevice: 'Google Mobile OAuth',
+          lastLoginDevice: 'Google Mobile App',
         }
       });
     } else {
       user = await prisma.user.update({
         where: { id: user.id },
-        data: { lastLogin: new Date(), lastLoginDevice: 'Google Mobile OAuth' }
+        data: {
+          lastLogin: new Date(),
+          lastLoginDevice: 'Google Mobile App',
+          image: image || user.image
+        }
       });
     }
     const token = signToken(user);
-    return res.redirect(`${redirectBase}/auth/callback?token=${encodeURIComponent(token)}`);
+    res.json({ token, user: formatUser(user) });
   } catch (err) {
-    console.error('Google mobile login error:', err);
-    return res.status(500).json({ error: 'auth_failed', details: err?.message || String(err) });
+    console.error('Native Google auth error:', err);
+    res.status(500).json({ error: 'server_error', message: 'Auth database query failed' });
   }
 });
-
-router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/auth/failure' }), (req, res) => {
-  const user = req.user;
-  const token = signToken(user);
-
-  let redirectBase = FRONTEND_URL;
-  if (req.query.state) {
-    try {
-      const decoded = JSON.parse(Buffer.from(req.query.state, 'base64').toString('utf8'));
-      if (decoded.redirectBase) redirectBase = decoded.redirectBase;
-    } catch (e) {}
-  }
-
-  const redirectUrl = `${redirectBase}/auth/callback?token=${encodeURIComponent(token)}`;
-  res.redirect(redirectUrl);
-});
-
-router.get('/failure', (req, res) => res.status(401).json({ error: 'oauth_failure' }));
 
 // Return current user from JWT token (supports both custom & Supabase JWTs)
 router.get('/me', verifyJWT, (req, res) => {

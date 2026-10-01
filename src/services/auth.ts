@@ -39,7 +39,18 @@ class AuthService {
 
   async refreshUser(): Promise<User | null> {
     try {
-      // Check Supabase session first
+      // 1. Prioritize active local token (custom JWT or active session token)
+      const token = localStorage.getItem('token');
+      if (token) {
+        const res = await apiClient.get('/auth/me');
+        if (res && res.user) {
+          this.state = { user: res.user, accessToken: token, isAuthenticated: true };
+          this.notifyListeners();
+          return res.user;
+        }
+      }
+
+      // 2. Fallback: Check Supabase session if no valid local token exists
       const { data: { session } } = await supabase.auth.getSession();
       if (session && session.access_token) {
         localStorage.setItem('token', session.access_token);
@@ -50,20 +61,11 @@ class AuthService {
           return res.user;
         }
       }
-
-      // Fallback to local token
-      const token = localStorage.getItem('token');
-      if (token) {
-        const res = await apiClient.get('/auth/me');
-        if (res && res.user) {
-          this.state = { user: res.user, accessToken: token, isAuthenticated: true };
-          this.notifyListeners();
-          return res.user;
-        }
-      }
     } catch (err) {
       console.error('Session refresh error:', err);
     }
+    this.state = { user: null, accessToken: null, isAuthenticated: false };
+    this.notifyListeners();
     return null;
   }
 
@@ -76,6 +78,11 @@ class AuthService {
         localStorage.setItem('token', session.access_token);
         await this.refreshUser();
       } else if (event === 'SIGNED_OUT') {
+        const currentToken = localStorage.getItem('token');
+        if (currentToken) {
+          const res = await apiClient.get('/auth/me');
+          if (res && res.user) return; // Local backend session is still active
+        }
         localStorage.removeItem('token');
         this.state = { user: null, accessToken: null, isAuthenticated: false };
         this.notifyListeners();
@@ -86,31 +93,40 @@ class AuthService {
   async signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
     try {
       const redirectUrl = `${window.location.origin}/auth/callback`;
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
         },
       });
-      if (error) {
-        return { success: false, error: error.message };
+
+      if (error || !data?.url) {
+        console.log('[Auth] Using backend Express Google OAuth endpoint.');
+        const baseUrl = apiClient.getApiBaseUrl();
+        window.location.href = `${baseUrl}/auth/google?redirect=${encodeURIComponent(window.location.origin)}`;
+        return { success: true };
       }
+
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Google sign-in failed' };
+      console.warn('[Auth] Exception during Google OAuth, redirecting to local backend auth:', err);
+      const baseUrl = apiClient.getApiBaseUrl();
+      window.location.href = `${baseUrl}/auth/google?redirect=${encodeURIComponent(window.location.origin)}`;
+      return { success: true };
     }
   }
 
-  async handleOAuthCallback(token?: string) {
+  async handleOAuthCallback(token?: string): Promise<boolean> {
     if (token) {
       localStorage.setItem('token', token);
     }
     const { data: { session } } = await supabase.auth.getSession();
-    const activeToken = session?.access_token || token || localStorage.getItem('token');
+    const activeToken = token || session?.access_token || localStorage.getItem('token');
     if (activeToken) {
       localStorage.setItem('token', activeToken);
     }
-    await this.refreshUser();
+    const user = await this.refreshUser();
+    return !!(user && this.state.isAuthenticated);
   }
 
   async signup(email: string, password: string, name: string) {
