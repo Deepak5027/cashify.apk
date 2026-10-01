@@ -6,6 +6,11 @@ node_modules/
 dist/
 build/
 .vite/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+aifinancify_flutter/build/
+aifinancify_flutter/.dart_tool/
 
 # Environment files
 .env

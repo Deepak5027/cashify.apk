@@ -3,10 +3,10 @@ name: API Load Testing (100 VUs / 1 min)
 on:
   push:
     paths:
-      - 'Aidailycashmanagement-main/server/**'
+      - 'server/**'
   pull_request:
     paths:
-      - 'Aidailycashmanagement-main/server/**'
+      - 'server/**'
   workflow_dispatch:
     inputs:
       backend_url:
@@ -28,12 +28,12 @@ jobs:
           node-version: 20
 
       - name: Install Backend Server Dependencies
-        working-directory: ./Aidailycashmanagement-main/server
+        working-directory: ./server
         run: npm ci || npm install
 
       - name: Start Background Backend Server (if local testing)
         if: "${{ github.event.inputs.backend_url == '' || github.event.inputs.backend_url == 'http://127.0.0.1:5000' }}"
-        working-directory: ./Aidailycashmanagement-main/server
+        working-directory: ./server
         run: |
           npm run start &
           sleep 4
@@ -46,12 +46,12 @@ jobs:
         env:
           BACKEND_URL: "${{ github.event.inputs.backend_url || 'http://127.0.0.1:5000' }}"
         run: |
-          k6 run --summary-export=summary.json Aidailycashmanagement-main/server/scripts/load-test.js || echo "k6 run finished with threshold report"
+          k6 run --summary-export=summary.json server/scripts/load-test.js || echo "k6 run finished with threshold report"
 
       - name: Parse and Publish Performance Summary
         if: always()
         run: |
-          node Aidailycashmanagement-main/server/scripts/parseK6Summary.js summary.json
+          node server/scripts/parseK6Summary.js summary.json
 
       - name: Upload Load Testing Artifacts
         if: always()

@@ -29,14 +29,12 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: 'Aidailycashmanagement-main/package-lock.json'
+          cache-dependency-path: 'package-lock.json'
 
       - name: Install Frontend Dependencies
-        working-directory: ./Aidailycashmanagement-main
         run: npm ci
 
       - name: Build Web Application
-        working-directory: ./Aidailycashmanagement-main
         run: npm run build
 
       - name: Install E2E Test Dependencies
@@ -44,7 +42,6 @@ jobs:
         run: npm install
 
       - name: Start Background Vite Preview Server
-        working-directory: ./Aidailycashmanagement-main
         run: |
           npx vite preview --port 5173 --host 127.0.0.1 &
           sleep 4
@@ -63,22 +60,22 @@ jobs:
 
       - name: Prepare Unified Deployment Bundle (App + Reports)
         run: |
-          mkdir -p Aidailycashmanagement-main/dist/reports/latest
-          mkdir -p Aidailycashmanagement-main/dist/reports/history/build-${{ github.run_number }}
-          mkdir -p Aidailycashmanagement-main/dist/security/web
+          mkdir -p dist/reports/latest
+          mkdir -p dist/reports/history/build-${{ github.run_number }}
+          mkdir -p dist/security/web
           
           # Inject HTML and Excel reports
           if [ -f "AidailycashE2E/Test_Results/HTML/execution-report.html" ]; then
-            cp AidailycashE2E/Test_Results/HTML/execution-report.html Aidailycashmanagement-main/dist/reports/latest/execution-report.html
-            cp AidailycashE2E/Test_Results/HTML/execution-report.html Aidailycashmanagement-main/dist/reports/history/build-${{ github.run_number }}/execution-report.html
+            cp AidailycashE2E/Test_Results/HTML/execution-report.html dist/reports/latest/execution-report.html
+            cp AidailycashE2E/Test_Results/HTML/execution-report.html dist/reports/history/build-${{ github.run_number }}/execution-report.html
           fi
 
           if [ -f "AidailycashE2E/Test_Results/Excel/selenium-report.xlsx" ]; then
-            cp AidailycashE2E/Test_Results/Excel/selenium-report.xlsx Aidailycashmanagement-main/dist/reports/latest/selenium-report.xlsx
+            cp AidailycashE2E/Test_Results/Excel/selenium-report.xlsx dist/reports/latest/selenium-report.xlsx
           fi
 
           if [ -f "AidailycashE2E/Security_Reports/Web/web-security-review.md" ]; then
-            cp -r AidailycashE2E/Security_Reports/Web/* Aidailycashmanagement-main/dist/security/web/ || true
+            cp -r AidailycashE2E/Security_Reports/Web/* dist/security/web/ || true
           fi
 
       - name: Upload Test Report Artifacts
@@ -93,7 +90,7 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: Aidailycashmanagement-main/dist
+          path: dist
 
       - name: Deploy to GitHub Pages
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'

@@ -3,12 +3,14 @@ name: Security Review & SAST Policy Gate
 on:
   push:
     paths:
-      - 'Aidailycashmanagement-main/**'
+      - 'src/**'
+      - 'server/**'
       - 'AidailycashE2E/**'
       - 'aifinancify_flutter/**'
   pull_request:
     paths:
-      - 'Aidailycashmanagement-main/**'
+      - 'src/**'
+      - 'server/**'
       - 'AidailycashE2E/**'
       - 'aifinancify_flutter/**'
   workflow_dispatch:
@@ -37,9 +39,9 @@ jobs:
         run: node scripts/generateWebSecuritySuite.js
 
       - name: Run Backend API Security Suite
-        working-directory: ./Aidailycashmanagement-main/server
+        working-directory: ./server
         env:
-          NODE_PATH: ../../AidailycashE2E/node_modules
+          NODE_PATH: ../AidailycashE2E/node_modules
         run: node scripts/generateSecuritySuite.js
 
       - name: Enforce Zero-Critical Security Policy Gate
@@ -50,7 +52,7 @@ jobs:
           WEB_CRITICAL=$(grep -i "Critical:" AidailycashE2E/Security_Reports/Web/web-security-review.md | grep -oE "Critical: [0-9]+" | awk '{print $2}' || echo "0")
           
           # Check Backend Security Findings
-          BACKEND_CRITICAL=$(grep -i "Critical:" Aidailycashmanagement-main/server/Security_Reports/Backend/security-review.md | grep -oE "Critical: [0-9]+" | awk '{print $2}' || echo "0")
+          BACKEND_CRITICAL=$(grep -i "Critical:" server/Security_Reports/Backend/security-review.md | grep -oE "Critical: [0-9]+" | awk '{print $2}' || echo "0")
           
           echo "Web Critical Count: $WEB_CRITICAL"
           echo "Backend Critical Count: $BACKEND_CRITICAL"
@@ -68,7 +70,7 @@ jobs:
           name: security-audit-reports
           path: |
             AidailycashE2E/Security_Reports/
-            Aidailycashmanagement-main/server/Security_Reports/
+            server/Security_Reports/
 
       - name: Append Summaries to GITHUB_STEP_SUMMARY
         if: always()
@@ -79,6 +81,6 @@ jobs:
             cat AidailycashE2E/Security_Reports/Web/web-executive-summary.md >> $GITHUB_STEP_SUMMARY
           fi
           
-          if [ -f "Aidailycashmanagement-main/server/Security_Reports/Backend/executive-summary.md" ]; then
-            cat Aidailycashmanagement-main/server/Security_Reports/Backend/executive-summary.md >> $GITHUB_STEP_SUMMARY
+          if [ -f "server/Security_Reports/Backend/executive-summary.md" ]; then
+            cat server/Security_Reports/Backend/executive-summary.md >> $GITHUB_STEP_SUMMARY
           fi

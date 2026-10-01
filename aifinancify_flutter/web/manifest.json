@@ -1,0 +1,11 @@
+{
+  "name": "AiFinancify",
+  "short_name": "AiFinancify",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0B0F19",
+  "theme_color": "#38BDF8",
+  "description": "AI Daily Cash Management Mobile & Web App",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false
+}

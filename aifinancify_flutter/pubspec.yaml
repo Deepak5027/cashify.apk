@@ -1,0 +1,45 @@
+name: aifinancify_flutter
+description: A native Flutter Android wrapper and tracker for AiFinancify personal finance app.
+version: 1.0.0+1
+
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management & DI
+  provider: ^6.1.1
+
+  # Network & APIs
+  dio: ^5.4.0
+
+  # Native Integrations & Hardware
+  google_sign_in: ^6.2.1
+  image_picker: ^1.0.7
+  google_mlkit_text_recognition: ^0.11.0
+  speech_to_text: ^6.6.0
+  connectivity_plus: ^5.0.2
+  local_auth: ^2.1.8
+
+  # Persistence & Offline Sync
+  shared_preferences: ^2.2.2
+  sqflite: ^2.3.0
+  path_provider: ^2.1.1
+  path: ^1.8.3
+
+  # Charts & UI utilities
+  fl_chart: ^0.66.0
+  intl: ^0.19.0
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
