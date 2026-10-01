@@ -2,17 +2,9 @@ name: Security Review & SAST Policy Gate
 
 on:
   push:
-    paths:
-      - 'src/**'
-      - 'server/**'
-      - 'AidailycashE2E/**'
-      - 'aifinancify_flutter/**'
+    branches: [ main, master ]
   pull_request:
-    paths:
-      - 'src/**'
-      - 'server/**'
-      - 'AidailycashE2E/**'
-      - 'aifinancify_flutter/**'
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -28,37 +20,38 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Common Security Scanning Dependencies
-        working-directory: ./AidailycashE2E
-        run: npm install exceljs
+      - name: Install Common Security Dependencies
+        run: |
+          cd AidailycashE2E && npm install
+          cd ../server && npm install exceljs
 
       - name: Run Web Frontend Security Suite
-        working-directory: ./AidailycashE2E
-        env:
-          NODE_PATH: ./node_modules
-        run: node scripts/generateWebSecuritySuite.js
+        run: |
+          cd AidailycashE2E
+          node scripts/generateWebSecuritySuite.js
 
       - name: Run Backend API Security Suite
-        working-directory: ./server
-        env:
-          NODE_PATH: ../AidailycashE2E/node_modules
-        run: node scripts/generateSecuritySuite.js
+        run: |
+          cd server
+          node scripts/generateSecuritySuite.js
 
       - name: Enforce Zero-Critical Security Policy Gate
         run: |
           echo "Verifying Zero-Critical security threshold..."
-          
-          # Check Web Security Findings
-          WEB_CRITICAL=$(grep -i "Critical:" AidailycashE2E/Security_Reports/Web/web-security-review.md | grep -oE "Critical: [0-9]+" | awk '{print $2}' || echo "0")
-          
-          # Check Backend Security Findings
-          BACKEND_CRITICAL=$(grep -i "Critical:" server/Security_Reports/Backend/security-review.md | grep -oE "Critical: [0-9]+" | awk '{print $2}' || echo "0")
-          
-          echo "Web Critical Count: $WEB_CRITICAL"
-          echo "Backend Critical Count: $BACKEND_CRITICAL"
-
-          if [ "$WEB_CRITICAL" -gt "0" ] || [ "$BACKEND_CRITICAL" -gt "0" ]; then
-            echo "❌ SECURITY GATE FAILED: Critical vulnerabilities detected ($WEB_CRITICAL Web, $BACKEND_CRITICAL Backend)."
+          WEB_CRIT=0
+          BACKEND_CRIT=0
+          if [ -f "AidailycashE2E/Security_Reports/Web/web-security-review.md" ]; then
+            VAL=$(grep -oEi "Critical:\s*[0-9]+" AidailycashE2E/Security_Reports/Web/web-security-review.md | grep -oE "[0-9]+" | head -n 1 || echo "0")
+            WEB_CRIT=${VAL:-0}
+          fi
+          if [ -f "server/Security_Reports/Backend/security-review.md" ]; then
+            VAL=$(grep -oEi "Critical:\s*[0-9]+" server/Security_Reports/Backend/security-review.md | grep -oE "[0-9]+" | head -n 1 || echo "0")
+            BACKEND_CRIT=${VAL:-0}
+          fi
+          echo "Web Critical Count: $WEB_CRIT"
+          echo "Backend Critical Count: $BACKEND_CRIT"
+          if [ "$WEB_CRIT" -gt 0 ] || [ "$BACKEND_CRIT" -gt 0 ]; then
+            echo "❌ SECURITY GATE FAILED: Critical vulnerabilities detected ($WEB_CRIT Web, $BACKEND_CRIT Backend)."
             exit 1
           else
             echo "✅ SECURITY GATE PASSED: Zero critical vulnerabilities detected."
@@ -76,11 +69,9 @@ jobs:
         if: always()
         run: |
           echo "# 🛡️ Automated Security Review Results" >> $GITHUB_STEP_SUMMARY
-          
           if [ -f "AidailycashE2E/Security_Reports/Web/web-executive-summary.md" ]; then
             cat AidailycashE2E/Security_Reports/Web/web-executive-summary.md >> $GITHUB_STEP_SUMMARY
           fi
-          
           if [ -f "server/Security_Reports/Backend/executive-summary.md" ]; then
             cat server/Security_Reports/Backend/executive-summary.md >> $GITHUB_STEP_SUMMARY
           fi
