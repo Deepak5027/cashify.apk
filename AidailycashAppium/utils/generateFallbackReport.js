@@ -16,12 +16,25 @@ async function createFallbackReport() {
     });
   }
 
-  const excelPath = path.resolve(process.cwd(), 'Test_Results', 'Mobile', 'appium-report.xlsx');
-  const htmlPath = path.resolve(process.cwd(), 'Test_Results', 'Mobile', 'execution-report.html');
-  
-  const summary = await xlsxReporter.generateReport(excelPath);
-  generateMobileHtmlReport(summary, summary.results, htmlPath);
-  console.log('[Mobile Fallback] Fallback reports generated successfully.');
+  const paths = [
+    {
+      excel: path.resolve(__dirname, '..', 'Test_Results', 'Mobile', 'appium-report.xlsx'),
+      html: path.resolve(__dirname, '..', 'Test_Results', 'Mobile', 'execution-report.html')
+    },
+    {
+      excel: path.resolve(process.cwd(), 'Test_Results', 'Mobile', 'appium-report.xlsx'),
+      html: path.resolve(process.cwd(), 'Test_Results', 'Mobile', 'execution-report.html')
+    }
+  ];
+
+  for (const p of paths) {
+    fs.mkdirSync(path.dirname(p.excel), { recursive: true });
+    fs.mkdirSync(path.dirname(p.html), { recursive: true });
+    const summary = await xlsxReporter.generateReport(p.excel);
+    generateMobileHtmlReport(summary, summary.results, p.html);
+  }
+
+  console.log('[Mobile Fallback] Fallback reports generated successfully across target paths.');
 }
 
 if (require.main === module) {
