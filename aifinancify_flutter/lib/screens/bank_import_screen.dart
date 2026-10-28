@@ -178,8 +178,10 @@ class _BankImportScreenState extends State<BankImportScreen> {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
         children: [
           // Format Guidelines Card
           Container(
@@ -492,6 +494,7 @@ class _BankImportScreenState extends State<BankImportScreen> {
           ],
         ],
       ),
-    );
+    ),
+  );
   }
 }

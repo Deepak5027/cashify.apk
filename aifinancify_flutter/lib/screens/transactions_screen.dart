@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import '../state/transaction_provider.dart';
 import '../state/profile_provider.dart';
 import '../models/transaction.dart';
+import '../widgets/app_bottom_sheet.dart';
 
 class TransactionsScreen extends StatefulWidget {
   final VoidCallback? onMenuPressed;
@@ -416,184 +417,182 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     String recurringPeriod = existing?.recurringPeriod ?? 'monthly';
     DateTime selectedDate = existing?.date ?? DateTime.now();
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E293B),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        builder: (ctx, setModalState) => AppModalSheetLayout(
+          header: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  existing == null ? "Add New Transaction" : "Edit Transaction",
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+          ),
+          bottomAction: SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final amt = double.parse(amountCtrl.text.trim());
+                final desc = descCtrl.text.trim();
+
+                final tx = TransactionModel(
+                  id: existing?.id,
+                  amount: amt,
+                  description: desc,
+                  category: category,
+                  type: type,
+                  paymentMode: paymentMode,
+                  isRecurring: isRecurring,
+                  recurringPeriod: isRecurring ? recurringPeriod : null,
+                  date: selectedDate,
+                );
+
+                Navigator.pop(ctx);
+                if (existing == null) {
+                  await context.read<TransactionProvider>().addTransaction(tx);
+                } else {
+                  await context.read<TransactionProvider>().updateTransaction(existing.id!, tx.toJson());
+                }
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(existing == null ? "Transaction created!" : "Transaction updated!"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              child: Text(
+                existing == null ? "Save Transaction" : "Update Transaction",
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
           ),
           child: Form(
             key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    existing == null ? "Add New Transaction" : "Edit Transaction",
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Income / Expense selector
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setModalState(() => type = 'expense'),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
-                              color: type == 'expense' ? Colors.redAccent.withOpacity(0.2) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: type == 'expense' ? Colors.redAccent : Colors.white24),
-                            ),
-                            child: const Center(
-                              child: Text("Expense", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Income / Expense selector
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setModalState(() => type = 'expense'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: type == 'expense' ? Colors.redAccent.withOpacity(0.2) : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: type == 'expense' ? Colors.redAccent : Colors.white24),
+                          ),
+                          child: const Center(
+                            child: Text("Expense", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setModalState(() => type = 'income'),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
-                              color: type == 'income' ? Colors.greenAccent.withOpacity(0.2) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: type == 'income' ? Colors.greenAccent : Colors.white24),
-                            ),
-                            child: const Center(
-                              child: Text("Income", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Amount
-                  TextFormField(
-                    controller: amountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _buildInputDec("Amount (e.g. 500.00)", Icons.currency_rupee),
-                    validator: (val) => val == null || double.tryParse(val) == null ? "Enter valid amount" : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Description / Merchant
-                  TextFormField(
-                    controller: descCtrl,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _buildInputDec("Description / Merchant", Icons.storefront_outlined),
-                    validator: (val) => val == null || val.trim().isEmpty ? "Enter description" : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Category & Payment Mode Dropdowns
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: _categories.contains(category) ? category : 'Other',
-                          dropdownColor: const Color(0xFF1E293B),
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                          decoration: _buildInputDec("Category", Icons.category_outlined),
-                          items: _categories.where((c) => c != 'All').map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                          onChanged: (val) {
-                            if (val != null) setModalState(() => category = val);
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: _paymentModes.contains(paymentMode) ? paymentMode : 'Cash',
-                          dropdownColor: const Color(0xFF1E293B),
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                          decoration: _buildInputDec("Payment", Icons.payment_outlined),
-                          items: _paymentModes.where((p) => p != 'All').map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                          onChanged: (val) {
-                            if (val != null) setModalState(() => paymentMode = val);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Recurring switch
-                  SwitchListTile(
-                    title: const Text("Recurring Transaction", style: TextStyle(color: Colors.white, fontSize: 14)),
-                    subtitle: Text("Auto-renews $recurringPeriod", style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                    value: isRecurring,
-                    activeColor: const Color(0xFF6366F1),
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (val) => setModalState(() => isRecurring = val),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Save button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6366F1),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onPressed: () async {
-                        if (!formKey.currentState!.validate()) return;
-                        final amt = double.parse(amountCtrl.text.trim());
-                        final desc = descCtrl.text.trim();
-
-                        final tx = TransactionModel(
-                          id: existing?.id,
-                          amount: amt,
-                          description: desc,
-                          category: category,
-                          type: type,
-                          paymentMode: paymentMode,
-                          isRecurring: isRecurring,
-                          recurringPeriod: isRecurring ? recurringPeriod : null,
-                          date: selectedDate,
-                        );
-
-                        Navigator.pop(ctx);
-                        if (existing == null) {
-                          await context.read<TransactionProvider>().addTransaction(tx);
-                        } else {
-                          await context.read<TransactionProvider>().updateTransaction(existing.id!, tx.toJson());
-                        }
-
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(existing == null ? "Transaction created!" : "Transaction updated!"),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        }
-                      },
-                      child: Text(
-                        existing == null ? "Save Transaction" : "Update Transaction",
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setModalState(() => type = 'income'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: type == 'income' ? Colors.greenAccent.withOpacity(0.2) : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: type == 'income' ? Colors.greenAccent : Colors.white24),
+                          ),
+                          child: const Center(
+                            child: Text("Income", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Amount
+                TextFormField(
+                  controller: amountCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: _buildInputDec("Amount (e.g. 500.00)", Icons.currency_rupee),
+                  validator: (val) => val == null || double.tryParse(val) == null ? "Enter valid amount" : null,
+                ),
+                const SizedBox(height: 12),
+
+                // Description / Merchant
+                TextFormField(
+                  controller: descCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: _buildInputDec("Description / Merchant", Icons.storefront_outlined),
+                  validator: (val) => val == null || val.trim().isEmpty ? "Enter description" : null,
+                ),
+                const SizedBox(height: 12),
+
+                // Category & Payment Mode Dropdowns
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _categories.contains(category) ? category : 'Other',
+                        dropdownColor: const Color(0xFF1E293B),
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                        decoration: _buildInputDec("Category", Icons.category_outlined),
+                        items: _categories.where((c) => c != 'All').map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                        onChanged: (val) {
+                          if (val != null) setModalState(() => category = val);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _paymentModes.contains(paymentMode) ? paymentMode : 'Cash',
+                        dropdownColor: const Color(0xFF1E293B),
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                        decoration: _buildInputDec("Payment", Icons.payment_outlined),
+                        items: _paymentModes.where((p) => p != 'All').map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                        onChanged: (val) {
+                          if (val != null) setModalState(() => paymentMode = val);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Recurring switch
+                SwitchListTile(
+                  title: const Text("Recurring Transaction", style: TextStyle(color: Colors.white, fontSize: 14)),
+                  subtitle: Text("Auto-renews $recurringPeriod", style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                  value: isRecurring,
+                  activeColor: const Color(0xFF6366F1),
+                  contentPadding: EdgeInsets.zero,
+                  onChanged: (val) => setModalState(() => isRecurring = val),
+                ),
+                const SizedBox(height: 10),
+              ],
             ),
           ),
         ),
@@ -630,24 +629,31 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       await file.writeAsString(buffer.toString());
 
       if (context.mounted) {
-        showModalBottomSheet(
+        showAppModalBottomSheet(
           context: context,
-          backgroundColor: const Color(0xFF1E293B),
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-          builder: (bctx) => Padding(
-            padding: const EdgeInsets.all(20),
+          builder: (bctx) => AppModalSheetLayout(
+            header: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
+              child: Row(
+                children: const [
+                  Icon(Icons.check_circle, color: Color(0xFF10B981), size: 24),
+                  SizedBox(width: 10),
+                  Text("Transactions Exported Successfully", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            bottomAction: SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1), foregroundColor: Colors.white),
+                onPressed: () => Navigator.pop(bctx),
+                child: const Text("Done", style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: const [
-                    Icon(Icons.check_circle, color: Color(0xFF10B981), size: 24),
-                    SizedBox(width: 10),
-                    Text("Transactions Exported Successfully", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 14),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -664,15 +670,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       const SizedBox(height: 8),
                       Text("Total Rows Exported: ${list.length} records", style: const TextStyle(color: Colors.white70, fontSize: 12)),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1), foregroundColor: Colors.white),
-                    onPressed: () => Navigator.pop(bctx),
-                    child: const Text("Done", style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],

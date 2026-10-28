@@ -18,21 +18,30 @@ class GoalProvider extends ChangeNotifier {
   double get totalTargetAmount => _goals.fold(0.0, (sum, g) => sum + g.targetAmount);
   double get totalSavedAmount => _goals.fold(0.0, (sum, g) => sum + g.currentAmount);
 
-  Future<void> fetchGoals() async {
+  Future<List<GoalModel>> fetchGoals({bool throwOnFailure = false}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final remoteGoals = await _api.getGoals();
+      final remoteGoals = await _api.getGoals(throwOnFailure: throwOnFailure);
       if (remoteGoals.isNotEmpty) {
         _goals = remoteGoals;
         await _offline.saveLocalGoals(remoteGoals);
       } else {
-        _goals = await _offline.getLocalGoals();
+        if (!throwOnFailure) {
+          _goals = await _offline.getLocalGoals();
+        } else {
+          _goals = [];
+          await _offline.saveLocalGoals([]);
+        }
       }
-    } catch (_) {
+      return _goals;
+    } catch (e) {
+      _errorMessage = e.toString();
       _goals = await _offline.getLocalGoals();
+      if (throwOnFailure) rethrow;
+      return _goals;
     } finally {
       _isLoading = false;
       notifyListeners();

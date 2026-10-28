@@ -4,6 +4,7 @@ import '../state/budget_provider.dart';
 import '../state/transaction_provider.dart';
 import '../state/profile_provider.dart';
 import '../models/budget.dart';
+import '../widgets/app_bottom_sheet.dart';
 
 class BudgetScreen extends StatefulWidget {
   final VoidCallback? onMenuPressed;
@@ -353,37 +354,46 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   void _showHowItWorksModal(BuildContext context) {
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E293B),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
+      builder: (ctx) => AppModalSheetLayout(
+        header: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.calculate_outlined, color: Color(0xFF818CF8), size: 24),
+                  SizedBox(width: 10),
+                  Text("How Monthly Budget & AI Work", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
+        ),
+        bottomAction: SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Got It", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: const [
-                Icon(Icons.calculate_outlined, color: Color(0xFF818CF8), size: 24),
-                SizedBox(width: 10),
-                Text("How Monthly Budget & AI Work", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const SizedBox(height: 16),
             _buildExplanationStep("1. Set Budget (Limit)", "The monthly limit you specify for each category (e.g. ₹10,000 for Food)."),
             _buildExplanationStep("2. Current Spent", "Sum of all actual expense transactions logged in this category for the active calendar month."),
             _buildExplanationStep("3. AI Predicted Spend", "Calculated as: (Spent so far ÷ Days elapsed) × Total days in month. If you spent ₹2,000 in 5 days, AI projects ₹12,000 by month-end."),
             _buildExplanationStep("4. Remaining Balance", "Set Budget Limit − Current Spent. Turns green if safe, amber if near limit, and red if exceeded."),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text("Got It", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-            ),
           ],
         ),
       ),
@@ -433,74 +443,84 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final catCtrl = TextEditingController(text: existing?.category ?? '');
     final limitCtrl = TextEditingController(text: existing != null ? existing.limit.toString() : '');
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E293B),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
-        child: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                existing == null ? "Set Category Budget" : "Edit Budget Limit",
-                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: catCtrl,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: "Category Name (e.g. Food, Groceries)",
-                  labelStyle: const TextStyle(color: Colors.white54),
-                  prefixIcon: const Icon(Icons.category, color: Colors.white54),
-                  filled: true,
-                  fillColor: const Color(0xFF0B0F19),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => AppModalSheetLayout(
+          header: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  existing == null ? "Set Category Budget" : "Edit Budget Limit",
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                validator: (val) => val == null || val.trim().isEmpty ? "Enter category name" : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: limitCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: "Monthly Limit Amount",
-                  labelStyle: const TextStyle(color: Colors.white54),
-                  prefixIcon: const Icon(Icons.currency_rupee, color: Colors.white54),
-                  filled: true,
-                  fillColor: const Color(0xFF0B0F19),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => Navigator.pop(ctx),
                 ),
-                validator: (val) => val == null || double.tryParse(val) == null ? "Enter valid limit" : null,
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
-                  onPressed: () async {
-                    if (!formKey.currentState!.validate()) return;
-                    final cat = catCtrl.text.trim();
-                    final limit = double.parse(limitCtrl.text.trim());
+              ],
+            ),
+          ),
+          bottomAction: SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final cat = catCtrl.text.trim();
+                final limit = double.parse(limitCtrl.text.trim());
 
-                    Navigator.pop(ctx);
-                    if (existing == null) {
-                      await context.read<BudgetProvider>().addBudget(BudgetModel(category: cat, limit: limit));
-                    } else {
-                      await context.read<BudgetProvider>().updateBudget(existing.id!, {'name': cat, 'limit': limit});
-                    }
-                  },
-                  child: Text(existing == null ? "Save Budget" : "Update Limit", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                Navigator.pop(ctx);
+                if (existing == null) {
+                  await context.read<BudgetProvider>().addBudget(BudgetModel(category: cat, limit: limit));
+                } else {
+                  await context.read<BudgetProvider>().updateBudget(existing.id!, {'name': cat, 'limit': limit});
+                }
+              },
+              child: Text(existing == null ? "Save Budget" : "Update Limit", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          child: Form(
+            key: formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  controller: catCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: "Category Name (e.g. Food, Groceries)",
+                    labelStyle: const TextStyle(color: Colors.white54),
+                    prefixIcon: const Icon(Icons.category, color: Colors.white54),
+                    filled: true,
+                    fillColor: const Color(0xFF0B0F19),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  validator: (val) => val == null || val.trim().isEmpty ? "Enter category name" : null,
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: limitCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: "Monthly Limit Amount",
+                    labelStyle: const TextStyle(color: Colors.white54),
+                    prefixIcon: const Icon(Icons.currency_rupee, color: Colors.white54),
+                    filled: true,
+                    fillColor: const Color(0xFF0B0F19),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  validator: (val) => val == null || double.tryParse(val) == null ? "Enter valid limit" : null,
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
           ),
         ),
       ),

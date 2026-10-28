@@ -9,6 +9,7 @@ import '../models/transaction.dart';
 import '../models/budget.dart';
 import '../models/goal.dart';
 import '../models/virtual_card.dart';
+import '../models/spend_controls.dart';
 import '../models/invoice.dart';
 
 class PendingSyncItem {
@@ -145,7 +146,8 @@ class OfflineStorageService {
         tapToPayEnabled INTEGER,
         internationalTx INTEGER,
         cardColor TEXT,
-        isPrimary INTEGER
+        isPrimary INTEGER,
+        notes TEXT
       )
     ''');
 
@@ -387,9 +389,22 @@ class OfflineStorageService {
         'internationalTx': card.internationalTx ? 1 : 0,
         'cardColor': card.cardColor,
         'isPrimary': card.isPrimary ? 1 : 0,
+        'notes': card.notes,
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
+  }
+
+  Future<void> deleteLocalVirtualCard(int id) async {
+    if (kIsWeb) {
+      final list = await getLocalVirtualCards();
+      list.removeWhere((c) => c.id == id);
+      await saveLocalVirtualCards(list);
+      return;
+    }
+    final db = await database;
+    if (db == null) return;
+    await db.delete('local_virtual_cards', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<VirtualCardModel?> getLocalVirtualCard() async {
@@ -416,13 +431,13 @@ class OfflineStorageService {
       return VirtualCardModel(
         id: m['id'] as int?,
         cardName: m['cardName'] as String? ?? 'Card',
-        cardType: m['cardType'] as String? ?? 'Credit Card',
+        cardType: m['cardType'] as String? ?? 'Debit Card',
         cardNetwork: m['cardNetwork'] as String? ?? 'VISA',
         bankName: m['bankName'] as String? ?? 'Bank',
-        cardNumber: m['cardNumber'] as String? ?? '•••• •••• •••• 1234',
-        cardHolder: m['cardHolder'] as String? ?? 'DEEPAK R',
-        expiryDate: m['expiryDate'] as String? ?? '12/28',
-        cvv: m['cvv'] as String? ?? '567',
+        cardNumber: m['cardNumber'] as String? ?? '•••• •••• •••• 0000',
+        cardHolder: m['cardHolder'] as String? ?? 'CARDHOLDER',
+        expiryDate: m['expiryDate'] as String? ?? '',
+        cvv: '',
         spendingLimit: (m['spendingLimit'] as num?)?.toDouble() ?? 50000.0,
         currentSpend: (m['currentSpend'] as num?)?.toDouble() ?? 0.0,
         isFrozen: m['isFrozen'] == 1,
@@ -430,8 +445,29 @@ class OfflineStorageService {
         internationalTx: m['internationalTx'] == 1,
         cardColor: m['cardColor'] as String? ?? 'indigo',
         isPrimary: m['isPrimary'] == 1,
+        notes: m['notes'] as String? ?? '',
       );
     }).toList();
+  }
+
+  // ==========================================
+  // LOCAL SPEND LIMITS CACHE
+  // ==========================================
+  Future<void> saveLocalSpendLimits(SpendLimitModel limits) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('financify_spend_limits_v1', jsonEncode(limits.toJson()));
+  }
+
+  Future<SpendLimitModel> getLocalSpendLimits() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('financify_spend_limits_v1');
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw) as Map<String, dynamic>;
+        return SpendLimitModel.fromJson(decoded);
+      } catch (_) {}
+    }
+    return SpendLimitModel();
   }
 
   // ==========================================

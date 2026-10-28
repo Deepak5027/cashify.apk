@@ -5,6 +5,7 @@ import 'package:aifinancify_flutter/models/goal.dart';
 import 'package:aifinancify_flutter/services/ml_prediction_service.dart';
 import 'package:aifinancify_flutter/services/fraud_detection_service.dart';
 import 'package:aifinancify_flutter/services/ai_assistant_service.dart';
+import 'package:aifinancify_flutter/services/api_service.dart';
 
 void main() {
   group('TransactionModel Unit Tests', () {
@@ -144,6 +145,23 @@ void main() {
       );
       expect(reply.isNotEmpty, true);
       expect(reply.toLowerCase(), contains('dining'));
+    });
+  });
+
+  group('ApiService Authentication & JWT Tests', () {
+    test('generateSignedJwt generates valid 3-part signed token with HMAC-SHA256', () {
+      final token = ApiService.generateSignedJwt(
+        userId: '107195020811028661945',
+        email: 'deepakramesh0311@gmail.com',
+        name: 'Deepak Ramesh',
+      );
+
+      expect(token.isNotEmpty, true);
+      final parts = token.split('.');
+      expect(parts.length, 3);
+      expect(parts[0].isNotEmpty, true);
+      expect(parts[1].isNotEmpty, true);
+      expect(parts[2].isNotEmpty, true);
     });
   });
 }

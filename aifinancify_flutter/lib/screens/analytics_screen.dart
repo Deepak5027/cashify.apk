@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../state/transaction_provider.dart';
 import '../state/profile_provider.dart';
 import '../models/transaction.dart';
+import '../widgets/app_bottom_sheet.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   final VoidCallback? onMenuPressed;
@@ -500,24 +501,36 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       await file.writeAsString(csv.toString());
 
       if (context.mounted) {
-        showModalBottomSheet(
+        showAppModalBottomSheet(
           context: context,
           backgroundColor: const Color(0xFF1E293B),
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-          builder: (bctx) => Padding(
-            padding: const EdgeInsets.all(20),
+          builder: (bctx) => AppModalSheetLayout(
+            header: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+              child: Row(
+                children: const [
+                  Icon(Icons.check_circle, color: Color(0xFF10B981), size: 24),
+                  SizedBox(width: 10),
+                  Text("Report Downloaded Successfully", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            bottomAction: SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => Navigator.pop(bctx),
+                child: const Text("Done", style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: const [
-                    Icon(Icons.check_circle, color: Color(0xFF10B981), size: 24),
-                    SizedBox(width: 10),
-                    Text("Report Downloaded Successfully", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 14),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -534,15 +547,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       const SizedBox(height: 8),
                       Text("Total Rows Exported: ${txs.length} transactions", style: const TextStyle(color: Colors.white70, fontSize: 12)),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1), foregroundColor: Colors.white),
-                    onPressed: () => Navigator.pop(bctx),
-                    child: const Text("Done", style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],

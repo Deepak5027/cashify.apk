@@ -19,7 +19,7 @@ class BudgetProvider extends ChangeNotifier {
   double get totalBudgetLimit => _budgets.fold(0.0, (sum, b) => sum + b.limit);
   double get totalBudgetSpent => _budgets.fold(0.0, (sum, b) => sum + b.spent);
 
-  Future<void> fetchBudgets([List<TransactionModel>? currentTransactions]) async {
+  Future<List<BudgetModel>> fetchBudgets([List<TransactionModel>? currentTransactions, bool throwOnFailure = false]) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -27,15 +27,16 @@ class BudgetProvider extends ChangeNotifier {
     try {
       List<BudgetModel> rawBudgets = [];
       try {
-        rawBudgets = await _api.getBudgets();
+        rawBudgets = await _api.getBudgets(throwOnFailure: throwOnFailure);
         if (rawBudgets.isNotEmpty) {
           await _offline.saveLocalBudgets(rawBudgets);
         }
-      } catch (_) {
+      } catch (e) {
+        if (throwOnFailure) rethrow;
         rawBudgets = await _offline.getLocalBudgets();
       }
 
-      if (rawBudgets.isEmpty) {
+      if (rawBudgets.isEmpty && !throwOnFailure) {
         rawBudgets = await _offline.getLocalBudgets();
       }
 
@@ -72,8 +73,10 @@ class BudgetProvider extends ChangeNotifier {
       } else {
         _budgets = rawBudgets;
       }
+      return _budgets;
     } catch (_) {
       _budgets = await _offline.getLocalBudgets();
+      return _budgets;
     } finally {
       _isLoading = false;
       notifyListeners();

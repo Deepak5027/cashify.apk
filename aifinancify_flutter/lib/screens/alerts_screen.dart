@@ -4,6 +4,7 @@ import '../state/transaction_provider.dart';
 import '../state/profile_provider.dart';
 import '../models/transaction.dart';
 import '../services/fraud_detection_service.dart';
+import '../widgets/app_bottom_sheet.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -390,149 +391,159 @@ class _AlertsScreenState extends State<AlertsScreen> {
     String selectedCategory = "Food & Dining";
     FraudAnalysisResult? liveResult;
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: const Color(0xFF1E293B),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) {
-          return Padding(
-            padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+        builder: (ctx, setModalState) => AppModalSheetLayout(
+          header: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: const [
                     Icon(Icons.biotech, color: Color(0xFF818CF8), size: 22),
                     SizedBox(width: 8),
-                    Text("Live Transaction Risk Simulator", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text("Live Risk Simulator", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: amtCtrl,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: "Simulated Amount (₹)",
-                    labelStyle: const TextStyle(color: Colors.white54),
-                    filled: true,
-                    fillColor: const Color(0xFF0B0F19),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => Navigator.pop(ctx),
                 ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: descCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: "Merchant / Description",
-                    labelStyle: const TextStyle(color: Colors.white54),
-                    filled: true,
-                    fillColor: const Color(0xFF0B0F19),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  value: selectedCategory,
-                  dropdownColor: const Color(0xFF1E293B),
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: "Category Baseline",
-                    labelStyle: const TextStyle(color: Colors.white54),
-                    filled: true,
-                    fillColor: const Color(0xFF0B0F19),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  items: ['Food & Dining', 'Groceries', 'Shopping', 'Transport', 'Bills & Utilities', 'Entertainment']
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) setModalState(() => selectedCategory = val);
-                  },
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
-                    onPressed: () {
-                      final simulatedTx = TransactionModel(
-                        amount: double.tryParse(amtCtrl.text) ?? 1000.0,
-                        description: descCtrl.text,
-                        category: selectedCategory,
-                        date: DateTime.now(),
-                      );
-                      final result = FraudDetectionService.calculateFraudScore(simulatedTx, history);
-                      setModalState(() => liveResult = result);
-                    },
-                    icon: const Icon(Icons.analytics_outlined, size: 18),
-                    label: const Text("Run Multi-Factor Anomaly Scan", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                if (liveResult != null) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0B0F19),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: liveResult!.riskScore >= 0.6
-                            ? const Color(0xFFEF4444)
-                            : liveResult!.riskScore >= 0.35
-                                ? const Color(0xFFF59E0B)
-                                : const Color(0xFF10B981),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "Calculated Risk: ${(liveResult!.riskScore * 100).toStringAsFixed(0)}%",
-                              style: TextStyle(
-                                color: liveResult!.riskScore >= 0.6
-                                    ? const Color(0xFFEF4444)
-                                    : liveResult!.riskScore >= 0.35
-                                        ? const Color(0xFFF59E0B)
-                                        : const Color(0xFF10B981),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Text(
-                              "Level: ${liveResult!.riskLevel.toUpperCase()}",
-                              style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        ...liveResult!.reasons.map((r) => Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text("• ", style: TextStyle(color: Color(0xFF818CF8))),
-                                  Expanded(
-                                    child: Text(r, style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12)),
-                                  ),
-                                ],
-                              ),
-                            )),
-                      ],
-                    ),
-                  ),
-                ],
               ],
             ),
-          );
-        },
+          ),
+          bottomAction: SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                final simulatedTx = TransactionModel(
+                  amount: double.tryParse(amtCtrl.text) ?? 1000.0,
+                  description: descCtrl.text,
+                  category: selectedCategory,
+                  date: DateTime.now(),
+                );
+                final result = FraudDetectionService.calculateFraudScore(simulatedTx, history);
+                setModalState(() => liveResult = result);
+              },
+              icon: const Icon(Icons.analytics_outlined, size: 18),
+              label: const Text("Run Multi-Factor Anomaly Scan", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: amtCtrl,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: "Simulated Amount (₹)",
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: const Color(0xFF0B0F19),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: descCtrl,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: "Merchant / Description",
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: const Color(0xFF0B0F19),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                value: selectedCategory,
+                dropdownColor: const Color(0xFF1E293B),
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: "Category Baseline",
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: const Color(0xFF0B0F19),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                items: ['Food & Dining', 'Groceries', 'Shopping', 'Transport', 'Bills & Utilities', 'Entertainment']
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) setModalState(() => selectedCategory = val);
+                },
+              ),
+              if (liveResult != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0B0F19),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: liveResult!.riskScore >= 0.6
+                          ? const Color(0xFFEF4444)
+                          : liveResult!.riskScore >= 0.35
+                              ? const Color(0xFFF59E0B)
+                              : const Color(0xFF10B981),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Calculated Risk: ${(liveResult!.riskScore * 100).toStringAsFixed(0)}%",
+                            style: TextStyle(
+                              color: liveResult!.riskScore >= 0.6
+                                  ? const Color(0xFFEF4444)
+                                  : liveResult!.riskScore >= 0.35
+                                      ? const Color(0xFFF59E0B)
+                                      : const Color(0xFF10B981),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            "Level: ${liveResult!.riskLevel.toUpperCase()}",
+                            style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ...liveResult!.reasons.map((r) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text("• ", style: TextStyle(color: Color(0xFF818CF8))),
+                                Expanded(
+                                  child: Text(r, style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12)),
+                                ),
+                              ],
+                            ),
+                          )),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -5,6 +5,7 @@ import '../state/transaction_provider.dart';
 import '../state/profile_provider.dart';
 import '../models/invoice.dart';
 import '../widgets/upi_qr_widget.dart';
+import '../widgets/app_bottom_sheet.dart';
 
 class StatementsInvoicingScreen extends StatefulWidget {
   const StatementsInvoicingScreen({super.key});
@@ -464,34 +465,54 @@ class _StatementsInvoicingScreenState extends State<StatementsInvoicingScreen> w
   }
 
   void _showQrModal(BuildContext context, InvoiceModel inv, double total, String currency) {
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E293B),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(inv.invoiceNo, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                Text("$currency${total.toStringAsFixed(2)}", style: const TextStyle(color: Color(0xFF10B981), fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
+      builder: (ctx) => AppModalSheetLayout(
+        header: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(inv.invoiceNo, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
+        ),
+        bottomAction: SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Done", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ),
+        child: Column(
+          children: [
+            Text("$currency${total.toStringAsFixed(2)}", style: const TextStyle(color: Color(0xFF10B981), fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
-            Text("Payable to: ${inv.upiId}", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+            Text("Payable to: ${inv.upiId}", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
             const SizedBox(height: 20),
-            UpiQrWidget(
-              data: inv.upiPaymentUrl,
-              size: 200,
-              centerLabel: "UPI PAY",
+            Center(
+              child: UpiQrWidget(
+                data: inv.upiPaymentUrl,
+                size: 200,
+                centerLabel: "UPI PAY",
+              ),
             ),
             const SizedBox(height: 16),
             const Text(
               "Scan with Google Pay, PhonePe, Paytm, or BHIM to pay instantly",
-              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
               textAlign: TextAlign.center,
             ),
           ],
@@ -507,119 +528,114 @@ class _StatementsInvoicingScreenState extends State<StatementsInvoicingScreen> w
     final amtCtrl = TextEditingController(text: '15000');
     final taxCtrl = TextEditingController(text: '18');
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: const Color(0xFF1E293B),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("Create Client Invoice", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 14),
-              TextField(
-                controller: clientCtrl,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: const InputDecoration(
-                  labelText: "Client / Company Name",
-                  labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
-                  filled: true,
-                  fillColor: Color(0xFF0B0F19),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: upiCtrl,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: const InputDecoration(
-                  labelText: "Your Receiving UPI ID (e.g. yourname@okaxis)",
-                  labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
-                  filled: true,
-                  fillColor: Color(0xFF0B0F19),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: descCtrl,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: const InputDecoration(
-                  labelText: "Service / Item Description",
-                  labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
-                  filled: true,
-                  fillColor: Color(0xFF0B0F19),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: TextField(
-                      controller: amtCtrl,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
-                      decoration: const InputDecoration(
-                        labelText: "Amount (₹)",
-                        labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
-                        filled: true,
-                        fillColor: Color(0xFF0B0F19),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: taxCtrl,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
-                      decoration: const InputDecoration(
-                        labelText: "GST %",
-                        labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
-                        filled: true,
-                        fillColor: Color(0xFF0B0F19),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
-                  onPressed: () async {
-                    final client = clientCtrl.text.trim();
-                    final upi = upiCtrl.text.trim();
-                    final desc = descCtrl.text.trim();
-                    final amt = double.tryParse(amtCtrl.text.trim()) ?? 0.0;
-                    final tax = double.tryParse(taxCtrl.text.trim()) ?? 18.0;
+      builder: (ctx) => AppModalSheetLayout(
+        title: "Create Client Invoice",
+        bottomAction: SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              final client = clientCtrl.text.trim();
+              final upi = upiCtrl.text.trim();
+              final desc = descCtrl.text.trim();
+              final amt = double.tryParse(amtCtrl.text.trim()) ?? 0.0;
+              final tax = double.tryParse(taxCtrl.text.trim()) ?? 18.0;
 
-                    if (client.isNotEmpty && amt > 0) {
-                      await provider.createInvoice({
-                        'clientName': client,
-                        'upiId': upi.isNotEmpty ? upi : 'deepak@okaxis',
-                        'taxRate': tax,
-                        'items': [
-                          {
-                            'description': desc.isNotEmpty ? desc : 'Services Rendered',
-                            'quantity': 1,
-                            'unitPrice': amt,
-                          }
-                        ],
-                      });
-                      Navigator.pop(ctx);
+              if (client.isNotEmpty && amt > 0) {
+                await provider.createInvoice({
+                  'clientName': client,
+                  'upiId': upi.isNotEmpty ? upi : 'deepak@okaxis',
+                  'taxRate': tax,
+                  'items': [
+                    {
+                      'description': desc.isNotEmpty ? desc : 'Services Rendered',
+                      'quantity': 1,
+                      'unitPrice': amt,
                     }
-                  },
-                  child: const Text("Generate Invoice", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
+                  ],
+                });
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text("Generate Invoice", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
           ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: clientCtrl,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: const InputDecoration(
+                labelText: "Client / Company Name",
+                labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                filled: true,
+                fillColor: Color(0xFF0B0F19),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: upiCtrl,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: const InputDecoration(
+                labelText: "Your Receiving UPI ID (e.g. yourname@okaxis)",
+                labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                filled: true,
+                fillColor: Color(0xFF0B0F19),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: descCtrl,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: const InputDecoration(
+                labelText: "Service / Item Description",
+                labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                filled: true,
+                fillColor: Color(0xFF0B0F19),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: TextField(
+                    controller: amtCtrl,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    decoration: const InputDecoration(
+                      labelText: "Amount (₹)",
+                      labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                      filled: true,
+                      fillColor: Color(0xFF0B0F19),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: taxCtrl,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    decoration: const InputDecoration(
+                      labelText: "GST %",
+                      labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                      filled: true,
+                      fillColor: Color(0xFF0B0F19),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

@@ -387,7 +387,7 @@ class _ScannerScreenState extends State<ScannerScreen> with SingleTickerProvider
               if (_merchantController.text.isNotEmpty || _amountController.text.isNotEmpty)
                 _buildExtractedFieldsCard(currency),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 48),
             ],
           ),
         ),

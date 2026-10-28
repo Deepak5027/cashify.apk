@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../state/goal_provider.dart';
 import '../state/profile_provider.dart';
 import '../models/goal.dart';
+import '../widgets/app_bottom_sheet.dart';
 
 class GoalsScreen extends StatefulWidget {
   final VoidCallback? onMenuPressed;
@@ -323,21 +324,42 @@ class _GoalsScreenState extends State<GoalsScreen> {
     final targetCtrl = TextEditingController(text: existing != null ? existing.targetAmount.toString() : '');
     final savedCtrl = TextEditingController(text: existing != null ? existing.currentAmount.toString() : '0');
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E293B),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
+      builder: (ctx) => AppModalSheetLayout(
+        title: existing == null ? "Create Savings Goal" : "Edit Goal Target",
+        bottomAction: SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final name = nameCtrl.text.trim();
+              final target = double.parse(targetCtrl.text.trim());
+              final saved = double.tryParse(savedCtrl.text.trim()) ?? 0.0;
+
+              Navigator.pop(ctx);
+              if (existing == null) {
+                await context.read<GoalProvider>().addGoal(GoalModel(name: name, targetAmount: target, currentAmount: saved));
+              } else {
+                await context.read<GoalProvider>().updateGoal(existing.id!, {'name': name, 'target': target, 'saved': saved});
+              }
+            },
+            child: Text(
+              existing == null ? "Create Goal" : "Update Goal",
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+        ),
         child: Form(
           key: formKey,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(existing == null ? "Create Savings Goal" : "Edit Goal Target", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
               TextFormField(
                 controller: nameCtrl,
                 style: const TextStyle(color: Colors.white),
@@ -358,28 +380,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(labelText: "Initial Saved Amount", labelStyle: TextStyle(color: Colors.white54)),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
-                  onPressed: () async {
-                    if (!formKey.currentState!.validate()) return;
-                    final name = nameCtrl.text.trim();
-                    final target = double.parse(targetCtrl.text.trim());
-                    final saved = double.tryParse(savedCtrl.text.trim()) ?? 0.0;
-
-                    Navigator.pop(ctx);
-                    if (existing == null) {
-                      await context.read<GoalProvider>().addGoal(GoalModel(name: name, targetAmount: target, currentAmount: saved));
-                    } else {
-                      await context.read<GoalProvider>().updateGoal(existing.id!, {'name': name, 'target': target, 'saved': saved});
-                    }
-                  },
-                  child: Text(existing == null ? "Create Goal" : "Update Goal", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
               ),
             ],
           ),

@@ -38,29 +38,38 @@ class TransactionProvider extends ChangeNotifier {
   List<TransactionModel> get flaggedTransactions =>
       _transactions.where((t) => t.isHighRisk || t.isMediumRisk).toList();
 
-  Future<void> fetchTransactions() async {
+  Future<List<TransactionModel>> fetchTransactions({bool throwOnFailure = false}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final remoteTxs = await _api.getTransactions();
+      final remoteTxs = await _api.getTransactions(throwOnFailure: throwOnFailure);
       if (remoteTxs.isNotEmpty) {
         _transactions = remoteTxs;
         await _offline.saveLocalTransactions(remoteTxs);
       } else {
-        // If remote returned empty or failed, load from local storage
+        // If remote returned empty from server
         final local = await _offline.getLocalTransactions();
-        if (local.isNotEmpty) {
+        if (local.isNotEmpty && !throwOnFailure) {
           _transactions = local;
+        } else {
+          _transactions = remoteTxs;
+          if (throwOnFailure) {
+            await _offline.saveLocalTransactions([]);
+          }
         }
       }
-    } catch (_) {
+      return _transactions;
+    } catch (e) {
+      _errorMessage = e.toString();
       // Network offline/timeout -> load from local SQLite storage
       final local = await _offline.getLocalTransactions();
       if (local.isNotEmpty) {
         _transactions = local;
       }
+      if (throwOnFailure) rethrow;
+      return _transactions;
     } finally {
       _isLoading = false;
       notifyListeners();

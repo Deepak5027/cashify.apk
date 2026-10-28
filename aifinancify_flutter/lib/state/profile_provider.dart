@@ -18,6 +18,7 @@ class ProfileProvider extends ChangeNotifier {
 
   String get currency => _profile?.currency ?? '₹';
   String get timezone => _profile?.timezone ?? 'UTC+5:30';
+  String get name => _profile?.name ?? 'User';
 
   ProfileProvider() {
     _loadLocalProfile();
